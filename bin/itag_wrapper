@@ -1,0 +1,20 @@
+#!/bin/sh
+
+exec "$@"
+
+# This script does nothing but pass its arguments straight through to
+# whatever invokes it.  Its purpose is mostly to ensure the correct
+# running environment (PERL5LIB, etc) for perl one-liners that the ITAG
+# pipeline invokes on cluster nodes, but it can be used to ensure a
+# running environment for anything.
+
+# On a production system, this script will be installed in the same
+# Shipwright vessel/Debian package as the other ITAG scripts, and
+# Shipwright will ensure that it shares their same running environment.
+
+# On a development system, this script will be a no-op.
+
+
+
+
+
