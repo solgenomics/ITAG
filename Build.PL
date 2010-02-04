@@ -17,7 +17,7 @@ my $build = Module::Build->new(
     requires => {
 
         # right now, we have to depend on whole bioperl, like this
-#       'Bio::Root::Version' => '1.006000',
+       'Bio::Root::Version' => '==1.005002102',
 #  	'Bio::FeatureIO' => 0,
 # 	'Bio::SeqIO' => 0,
 # 	'Bio::Tools::tRNAscanSE' => 0,
