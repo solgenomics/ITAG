@@ -1,22 +1,43 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use autodie ':all';
 
 use Cwd;
-
-use Storable qw/ nstore /;
 use Data::Dumper;
 use List::Util qw/ shuffle max /;
+use File::Temp;
+use Storable qw/ nstore /;
+
+
 use CXGN::Tools::List qw/ balanced_split /;
 use CXGN::Tools::Wget qw/ wget_filter /;
 use CXGN::ITAG::Pipeline;
 
+#######
+
+#my $genomic = '/data/prod/public/tomato_genome/wgs/assembly/S_lycopersicum_scaffolds_20100122.fa.gz';
+my $genomic = 'genomic.fa';
+
+#######
+
 my $pipe = CXGN::ITAG::Pipeline->open( version => 1 );
-my $batch = $pipe->batch( 5 );
+my $batch = $pipe->batch( 3 );
 my $an = $pipe->analysis( 'renaming' );
 
-my @jobs;
 my $job_number = 0;
+
+my $unzipped_genomic = File::Temp->new;
+{ open my $unzipped, "gunzip -c $genomic |";
+  $unzipped_genomic->print($_) while <$unzipped>;
+}
+$unzipped_genomic->seek(0);
+$unzipped_genomic->close;
+
+ scalar <$unzipped_genomic>;
+
+
+# get a list of all cDNA files that are nonzero size
 my @cdna_files =
     grep -s,
     map {
@@ -26,6 +47,8 @@ my @cdna_files =
     sort $batch->seqlist;
 
 my $cdna_size;
+my @jobs;
+my @running_jobs;
 foreach my $cdna_job ( balanced_split( 200, @cdna_files ) ) {
     # find the cdna result files for the seqs in this job
 
@@ -37,7 +60,7 @@ foreach my $cdna_job ( balanced_split( 200, @cdna_files ) ) {
 	next;
     }
     my %job_record = ( cdna    => $cdna_job,
-		       genomic => 'ftp://ftp.solgenomics.net/tomato_genome/wgs/assembly/S_lycopersicum_scaffolds_20100122.fa.gz',
+		       genomic => $genomic,
 		       dir     => $jobdir,
 		       script => <<'EOS',
 		       use CXGN::Tools::Wget 'wget_filter';
@@ -62,7 +85,7 @@ foreach my $cdna_job ( balanced_split( 200, @cdna_files ) ) {
 EOS
 	             );
 
-    $cdna_size ||= -s '/data/prod/public/tomato_genome/wgs/assembly/S_lycopersicum_scaffolds_20100122.fa.gz'
+    $cdna_size ||= -s $genomic
 	or die "no cdna size";
 
     my $vmem_est = max map estimate_vmem($cdna_size,$_), @$cdna_job;
