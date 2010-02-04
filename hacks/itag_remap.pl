@@ -22,22 +22,27 @@ my @cdna_files =
     map {
 	my (undef,undef,undef,$cdna_file) = $an->files_for_seq( $batch, $_ );
 	$cdna_file
-    } $batch->seqlist;
+    }
+    sort $batch->seqlist;
 
 my $cdna_size;
-foreach my $cdna_job ( balanced_split( 200, shuffle @cdna_files ) ) {
+foreach my $cdna_job ( balanced_split( 200, @cdna_files ) ) {
     # find the cdna result files for the seqs in this job
 
     my $jobdir  = getcwd()."/".++$job_number;
     mkdir $jobdir;
     print "job $job_number - $jobdir - ".@$cdna_job." seqs\n";
+    if( -f "$jobdir/done" ) {
+	print "done, skipping.\n";
+	next;
+    }
     my %job_record = ( cdna    => $cdna_job,
 		       genomic => 'ftp://ftp.solgenomics.net/tomato_genome/wgs/assembly/S_lycopersicum_scaffolds_20100122.fa.gz',
 		       dir     => $jobdir,
 		       script => <<'EOS',
 		       use CXGN::Tools::Wget 'wget_filter';
 		       use CXGN::Tools::Run;
-		       my $g = wget_filter( $j->{genomic} => "$j->{dir}/genomic.fa" );
+		       my $g = wget_filter( $j->{genomic} => "$j->{dir}/genomic.fa", { gunzip => 1 } );
 
 		       my $out_cnt = 0;
 		       foreach my $c (@{$j->{cdna}}) {
@@ -52,6 +57,8 @@ foreach my $cdna_job ( balanced_split( 200, shuffle @cdna_files ) ) {
 						-genomic           => $g,
 			                      );
 		       }
+		       unlink $g;
+		       open my $f, '>', $j->{dir}.'/done';
 EOS
 	             );
 
