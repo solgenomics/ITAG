@@ -1,0 +1,51 @@
+package CXGN::ITAG::Pipeline::Analysis::ANALNAME;
+use strict;
+use warnings;
+use English;
+use Carp;
+
+use Bio::SeqIO;
+
+use CXGN::Tools::Class qw/parricide/;
+
+=head1 NAME
+
+CXGN::ITAG::Pipeline::Analysis::ANALNAME - pipeline analysis to produce FILL IN SOMETHING HERE
+
+=head1 BASE CLASS(ES)
+
+L<CXGN::ITAG::Pipeline::Analysis>
+
+=cut
+
+use base qw/CXGN::ITAG::Pipeline::Analysis/;
+
+=head1 METHODS
+
+implements all abstract methods defined in L<CXGN::ITAG::Pipeline::Analysis>,
+also overrides FILL IN OVERRIDES HERE
+
+=cut
+
+#this analysis is locally runnable
+sub locally_runnable { 1 }
+
+#and this is the routine to run it
+sub run {
+  my ($self,$batch) = @_;
+
+}
+
+=head1 AUTHOR(S)
+
+Robert Buels
+
+=cut
+
+sub DESTROY {
+  return parricide(shift,our @ISA);
+}
+
+###
+1;#do not remove
+###
