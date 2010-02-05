@@ -52,6 +52,7 @@ foreach my $pairs ( @file_pair_sets ) {
     print "job $job_number - $jobdir - ".@$pairs." pairs\n";
 
     my $donefile = $jobdir->file('done');
+    #my $save_file = $jobdir->file('job.save');
     if( -f $donefile  ) {
 	print "done, skipping.\n";
 	next;
@@ -83,6 +84,7 @@ foreach my $pairs ( @file_pair_sets ) {
                          #system "echo $cdna, $genomic > $outfile"; next;
 			 CXGN::Tools::Run->run( 'gth',
 						'-xmlout',
+						'-force', #overwrite output
 						-minalignmentscore => '0.90',
 						-mincoverage       => '0.90',
 						-seedlength        => 16,
@@ -99,7 +101,7 @@ EOS
 
     my $vmem_est = max map estimate_vmem( $_->[0], $_->[1] ), @$pairs;
 
-    my $jobfile = "$jobdir/job.dat";
+    my $jobfile = $jobdir->file('job.dat');
     nstore \%job_record, $jobfile;
 
     my $job = CXGN::Tools::Run->run_cluster( 'itag_wrapper',
