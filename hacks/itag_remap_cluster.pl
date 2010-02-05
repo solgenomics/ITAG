@@ -121,27 +121,38 @@ sub estimate_vmem {
 sub generate_genomic_input {
     my $source_file = file( shift );
     my $input_dir   = dir( shift );
-    $input_dir->mkpath;
 
-    my $src;
-    if( $source_file =~ /\.gz$/ ) {
-	open $src, "gunzip -c $source_file |";
-    } else {
-	open $src, '<', $source_file;
-    }
-    my $seqs = Bio::SeqIO->new( -fh => $src, -format => 'fasta' );
-    while( my $seq = $seqs->next_seq ) {
-	Bio::SeqIO->new( -format => 'fasta',
-			 -file => '>'.$input_dir->file( $seq->id.'.fa')->stringify,
-		       )
+    my $donefile = $input_dir->file('done');
+    unless( -f $donefile ) {
+	$input_dir->rmtree;
+	$input_dir->mkpath;
+	
+	my $src;
+	if ( $source_file =~ /\.gz$/ ) {
+	    open $src, "gunzip -c $source_file |";
+	} else {
+	    open $src, '<', $source_file;
+	}
+	my $seqs = Bio::SeqIO->new( -fh => $src, -format => 'fasta' );
+	while ( my $seq = $seqs->next_seq ) {
+	    Bio::SeqIO->new( -format => 'fasta',
+			     -file => '>'.$input_dir->file( $seq->id.'.fa')->stringify,
+			    )
 	          ->write_seq( $seq );
-    }
+	}
 
+	$donefile->openw->print("done ".time."\n");
+    }
     return grep /\.fa$/, $input_dir->children;
 }
 
 sub generate_cdna_input {
     my $input_dir = dir( shift );
+
+    my $donefile = $input_dir->file('done');
+    if( -f $donefile ) {
+	return map{ grep /\.fa/, $_->children } $input_dir->children
+    }
 
     $input_dir->rmtree;
     $input_dir->mkpath;
@@ -182,6 +193,8 @@ sub generate_cdna_input {
         }
         # starting with a sorted sequence list
         sort $batch->seqlist;
+
+    $donefile->openw->print("done ".time."\n");
 
     return @files;
 }
