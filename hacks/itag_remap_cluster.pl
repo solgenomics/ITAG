@@ -55,8 +55,6 @@ foreach my $pairs ( @file_pair_sets ) {
     if( -f $donefile  ) {
 	print "done, skipping.\n";
 	next;
-    } else {
-	print "no file $donefile\n";
     }
 
     system "rm -rf $jobdir";
@@ -82,7 +80,7 @@ foreach my $pairs ( @file_pair_sets ) {
                          $p = eval $p;
                          my ($cdna, $genomic) = @$p;
                          my $outfile = $j->{dir}.'/'.++$out_cnt.'.xml';
-                         system "echo $cdna, $genomic > $outfile"; next;
+                         #system "echo $cdna, $genomic > $outfile"; next;
 			 CXGN::Tools::Run->run( 'gth',
 						'-xmlout',
 						-minalignmentscore => '0.90',
