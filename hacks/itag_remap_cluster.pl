@@ -208,7 +208,7 @@ sub generate_cdna_input {
     $input_dir->mkpath;
 
     my $pipe = CXGN::ITAG::Pipeline->open( version => 1 );
-    my $batch = $pipe->batch( 3 );
+    my $batch = $pipe->batch( 5 );
     my $an = $pipe->analysis( 'renaming' );
 
     my $all_seqs = File::Temp->new;
