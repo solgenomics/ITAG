@@ -77,6 +77,8 @@ foreach my $pairs ( @file_pair_sets ) {
 
 sleep 10 while grep $_->alive, @jobs;
 
+$_->cleanup for @jobs;
+
 exit;
 
 ######### SUBS
@@ -96,7 +98,7 @@ sub estimate_vmem {
     my $vmem_est = sprintf('%0.0f',
 			       200
 			   +   6 * ( $genomic_size + $cdna_size )
-			   +   3 *   $genomic_size * $cdna_size
+			   +   4 *   $genomic_size * $cdna_size
 			  );
     #print "cdna size: $cdna_size, seq size: $seq_size => vmem $vmem_est M\n";
 
