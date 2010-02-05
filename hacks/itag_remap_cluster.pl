@@ -92,13 +92,11 @@ sub estimate_vmem {
     my $genomic_size = -s $genomic_file
 	or die "sanity check failed, no size found for genomic file $genomic_file";
 
-
-    $_ /= 1_000_000 for $cdna_size, $genomic_size;
-
+    my $megs = 2**20;
     my $vmem_est = sprintf('%0.0f',
-			       200
-			   +   6 * ( $genomic_size + $cdna_size )
-			   +   4 *   $genomic_size * $cdna_size
+			   (   200*$megs
+			     + '5e-05' * $genomic_size * $cdna_size
+                           )/$megs
 			  );
     #print "cdna size: $cdna_size, seq size: $seq_size => vmem $vmem_est M\n";
 
