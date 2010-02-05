@@ -17,27 +17,39 @@ use Bio::SeqIO;
 
 use CXGN::Tools::List qw/ balanced_split /;
 use CXGN::ITAG::Pipeline;
+use CXGN::ITAG::SeqSource::Fasta;
+
+###########
+
+my $genomic_chunks = 100;
+my $cdna_chunks    = 20;
+# = 2000 jobs
+
+###########
+$SIG{__DIE__} = \&Carp::confess;
 
 my $cdna_dir    = 'input/cdna';
 my $genomic_dir = 'input/genomic';
 
-my @cdna_files    = generate_cdna_input(    $cdna_dir    );
-my @genomic_files = generate_genomic_input( 'genomic.fa', $genomic_dir );
-
-# and now we generate an all-versus-all pairing of genomic and cdna files
-my @file_pairs = map {
-    my $g = $_;
-    map [ $_, $g ], @cdna_files;
-} @genomic_files;
-
+my @file_pair_sets =
+    balanced_split( 200,
+		    do {
+			my $cdna_files = generate_cdna_input( $cdna_chunks, $cdna_dir    );
+			# and now we generate an all-versus-all pairing of genomic and cdna files
+			map {
+			    my $g = $_;
+			    map [ $_, $g ], @$cdna_files;
+			} @{ generate_genomic_input( 'genomic.fa', $genomic_chunks, $genomic_dir ) }
+		    }
+		   );
 
 my @jobs;
 my $job_number = 0;
-
-foreach my $pairs ( balanced_split( 200, @file_pairs ) ) {
+foreach my $pairs ( @file_pair_sets ) {
     # each $pairs is an arrayref like [ [c,g],[c,g],[c,g], ... ]
 
     my $jobdir  = dir( 'jobs', ++$job_number );
+    system "rm -rf $jobdir";
     $jobdir->mkpath;
 
     print "job $job_number - $jobdir - ".@$pairs." pairs\n";
@@ -47,26 +59,37 @@ foreach my $pairs ( balanced_split( 200, @file_pairs ) ) {
 	next;
     }
 
-    my %job_record = ( pairs   => $pairs,
+    my $pairs_file = $jobdir->file('pairs');
+    { local $Data::Dumper::Indent = 0;
+      local $Data::Dumper::Terse  = 1;
+      my $pairs_fh  = $pairs_file->openw;
+      $pairs_fh->say( Dumper [ "$_->[0]", "$_->[1]" ] ) for @$pairs;
+    }
+
+    my %job_record = ( pairs   => $pairs_file,
 		       dir     => $jobdir->stringify,
 		       script => <<'EOS',
 		       use CXGN::Tools::Run;
+                       use autodie ':all';
 
-		       my $out_cnt = 0;
-		       foreach (@{$j->{pairs}}) {
-                         my ($cdna, $genomic) = @$_;
+		       my $pair_number = 0;
+                       open my $pairs, $j->{pairs};
+                       while( my $p = <$pairs> ) {
+                         $p = eval $p;
+                         my ($cdna, $genomic) = @$p;
+                         my $outfile = $j->{dir}.'/'.++$out_cnt.'.xml';
+                         system "echo $cdna, $genomic > $outfile"; next;
 			 CXGN::Tools::Run->run( 'gth',
 						'-xmlout',
 						-minalignmentscore => '0.90',
 						-mincoverage       => '0.90',
 						-seedlength        => 16,
-						-o                 => $j->{dir}.'/'.++$out_cnt.'.xml',
+						-o                 => $outfile,
 						-species           => 'arabidopsis',
 						-cdna              => $cdna,
 						-genomic           => $genomic,
 			                      );
 		       }
-		       unlink $g;
 		       open my $f, '>', $j->{dir}.'/done';
 EOS
 	             );
@@ -79,13 +102,16 @@ EOS
     my $job = CXGN::Tools::Run->run_cluster( 'itag_wrapper',
 					     'perl',
 					     '-MStorable=retrieve',
-					     -E => q|my $j = retrieve($ARGV[0]) or die; #eval $j->{script}; die $@ if $@|,
+					     -E => q|my $j = retrieve($ARGV[0]) or die; eval $j->{script}; die $@ if $@|,
 					     $jobfile,
 					     {
 						 temp_base => $jobdir,
 						 vmem => $vmem_est,
 					     },
 	                                   );
+
+    print "submitted as ".$job->job_id."\n";
+
     push @jobs, $job;
 
     $_->alive for @jobs;
@@ -110,7 +136,8 @@ sub estimate_vmem {
     $_ /= 1_000_000 for $cdna_size, $genomic_size;
 
     my $vmem_est = sprintf('%0.0f',
-			       6 * ( $genomic_size + $cdna_size )
+			       200
+			   +   6 * ( $genomic_size + $cdna_size )
 			   +   3 *   $genomic_size * $cdna_size
 			  );
     #print "cdna size: $cdna_size, seq size: $seq_size => vmem $vmem_est M\n";
@@ -120,81 +147,86 @@ sub estimate_vmem {
 
 sub generate_genomic_input {
     my $source_file = file( shift );
+    my $chunk_count = shift;
     my $input_dir   = dir( shift );
 
     my $donefile = $input_dir->file('done');
     unless( -f $donefile ) {
+	print "generating genomic input files...";
 	$input_dir->rmtree;
 	$input_dir->mkpath;
-	
-	my $src;
-	if ( $source_file =~ /\.gz$/ ) {
-	    open $src, "gunzip -c $source_file |";
-	} else {
-	    open $src, '<', $source_file;
-	}
-	my $seqs = Bio::SeqIO->new( -fh => $src, -format => 'fasta' );
-	while ( my $seq = $seqs->next_seq ) {
-	    Bio::SeqIO->new( -format => 'fasta',
-			     -file => '>'.$input_dir->file( $seq->id.'.fa')->stringify,
-			    )
-	          ->write_seq( $seq );
-	}
+
+	chunk_fasta_file( $source_file, $chunk_count, $input_dir );
 
 	$donefile->openw->print("done ".time."\n");
+	print "done.\n";
+    } else {
+	print "using cached genomic input.\n";
     }
-    return grep /\.fa$/, $input_dir->children;
+    my @files;
+    $input_dir->recurse( callback => sub { $_ = shift; push @files, $_ if -f && /\.fa$/ } );
+    return \@files;
+}
+
+
+sub chunk_fasta_file {
+    my ( $file, $chunk_count, $dir, $make_name ) = @_;
+    $dir = dir( $dir );
+    $make_name ||= sub { my ($d,$chunk_num,$seq_list) = @_;
+			 return $d->file( $chunk_num.'.fa')->stringify
+		       };
+
+    my $src = CXGN::ITAG::SeqSource::Fasta->new( file => $file );
+    my $chunk_idx;
+    foreach my $chunk ( balanced_split( $chunk_count, shuffle $src->all_seq_names ) ) {
+	my $out = Bio::SeqIO->new( -format => 'fasta',
+				   -file => '>'.$make_name->( $dir, ++$chunk_idx, $chunk ),
+				  );
+	foreach (@$chunk) {
+	    my ($seq,undef) = $src->get_seq( $_ );
+	    $out->write_seq( $seq );
+	}
+    }
 }
 
 sub generate_cdna_input {
+    my $chunk_count = shift;
     my $input_dir = dir( shift );
 
     my $donefile = $input_dir->file('done');
     if( -f $donefile ) {
-	return map{ grep /\.fa/, $_->children } $input_dir->children
+	print "using cached cdna input.\n";
+	return _cdna_file_list( $input_dir );
     }
 
-    $input_dir->rmtree;
+    print "generating cdna input...";
+
+    system "rm -rf $input_dir";
     $input_dir->mkpath;
 
     my $pipe = CXGN::ITAG::Pipeline->open( version => 1 );
     my $batch = $pipe->batch( 3 );
     my $an = $pipe->analysis( 'renaming' );
 
-    my @files =
-        # split each cdna file into many cdna files, one per cdna seq
-        map {
-	    my $cdna_file = file( $_ );
-	    my $cdna_seqs = Bio::SeqIO->new( -format => 'fasta',
-					     -file => "$cdna_file",
-					    );
+    my $all_seqs = File::Temp->new;
+    foreach ( sort $batch->seqlist ) {
+	my (undef,undef,undef,$cdna_file) = $an->files_for_seq( $batch, $_ );
+	next unless -f $cdna_file;
+	my $fh = file( $cdna_file )->openr;
+	$all_seqs->print( $_ ) while <$fh>;
+    }
 
-	    my @files;
-	    my $cdna_count;
-	    my $input_subdir = $input_dir->subdir($cdna_file->basename );
-	    $input_subdir->mkpath;
-	    while ( my $single_cdna_seq = $cdna_seqs->next_seq ) {
-		my $single_cdna_file = $input_subdir->file( ++$cdna_count.'.fa' );
-		Bio::SeqIO->new( -format => 'fasta',
-				 -file   => ">$single_cdna_file",
-				)
-    		          ->write_seq( $single_cdna_seq );
-		push @files, $single_cdna_file;
-	    }
+    chunk_fasta_file( $all_seqs, $chunk_count, $input_dir );
 
-	    @files
-        }
-        # skip empty cdna files
-        grep -s,
-        # get all the cdna files
-        map {
-	    my (undef,undef,undef,$cdna_file) = $an->files_for_seq( $batch, $_ );
-	    $cdna_file
-        }
-        # starting with a sorted sequence list
-        sort $batch->seqlist;
+    $donefile->openw->print("done\n");
+    print "done.\n";
 
-    $donefile->openw->print("done ".time."\n");
+    return _cdna_file_list( $input_dir );
+}
 
-    return @files;
+sub _cdna_file_list {
+    my $input_dir = shift;
+    my @files;
+    $input_dir->recurse( callback => sub { $_ = shift; push @files, $_ if -f && /\.fa$/ } );
+    return \@files;
 }
