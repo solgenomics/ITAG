@@ -14,9 +14,6 @@ use CXGN::Tools::Run;
 
 use CXGN::ITAG::Config;
 
-#include this seqsource here since it's the default
-use CXGN::ITAG::SeqSource::TomatoBACs;
-
 use CXGN::ITAG::Pipeline::Analysis;
 use CXGN::ITAG::Pipeline::Batch;
 
