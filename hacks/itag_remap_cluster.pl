@@ -5,7 +5,7 @@ use autodie ':all';
 
 use Cwd;
 
-use Storable qw/ nstore /;
+use Storable qw/ nstore retrieve /;
 use Data::Dumper;
 use List::Util qw/ shuffle max /;
 
@@ -23,104 +23,57 @@ use CXGN::ITAG::SeqSource::Fasta;
 
 my $genomic_chunks = 100;
 my $cdna_chunks    = 20;
+my $batch_number   = 5;
 
 ###########
 $SIG{__DIE__} = \&Carp::confess;
 
-my $cdna_dir    = 'input/cdna';
-my $genomic_dir = 'input/genomic';
+my $cdna_dir    = dir( 'input/cdna' );
+my $genomic_dir = dir( 'input/genomic' );
+my $jobs_dir    = dir( 'jobs' );
 
-my @file_pair_sets =
-    balanced_split( 200,
-		    do {
-			my $cdna_files = generate_cdna_input( $cdna_chunks, $cdna_dir    );
-			# and now we generate an all-versus-all pairing of genomic and cdna files
-			map {
-			    my $g = $_;
-			    map [ $_, $g ], @$cdna_files;
-			} @{ generate_genomic_input( 'genomic.fa', $genomic_chunks, $genomic_dir ) }
-		    }
-		   );
+# and now we generate an all-versus-all pairing of genomic and cdna files
+my @file_pair_sets = do {
+    my $cdna_files    = generate_cdna_input   ( $cdna_chunks, $cdna_dir, $jobs_dir );
+    my $genomic_files = generate_genomic_input( 'genomic.fa', $genomic_chunks, $genomic_dir, $jobs_dir );
+
+    # now generate an all-vs-all array of pairs of files that need to
+    # be against eachother, and do a balanced_split on that to batch
+    # them into (at most) 200 cluster jobs
+    balanced_split( 200, map { my $g = $_; map [ $_, $g ], @$cdna_files } @$genomic_files );
+};
 
 my @jobs;
 my $job_number = 0;
 foreach my $pairs ( @file_pair_sets ) {
     # each $pairs is an arrayref like [ [c,g],[c,g],[c,g], ... ]
 
-    my $jobdir  = dir( 'jobs', ++$job_number );
+    my $jobdir  = $jobs_dir->subdir( ++$job_number );
 
     print "job $job_number - $jobdir - ".@$pairs." pairs\n";
 
-    my $donefile = $jobdir->file('done');
-    #my $save_file = $jobdir->file('job.save');
+    my $donefile  = $jobdir->file('done');
     if( -f $donefile  ) {
 	print "done, skipping.\n";
 	next;
     }
 
-    system "rm -rf $jobdir";
-    $jobdir->mkpath;
 
-    my $pairs_file = $jobdir->file('pairs');
-    { local $Data::Dumper::Indent = 0;
-      local $Data::Dumper::Terse  = 1;
-      my $pairs_fh  = $pairs_file->openw;
-      $pairs_fh->say( Dumper [ "$_->[0]", "$_->[1]" ] ) for @$pairs;
+    my $save_file = $jobdir->file('job.save');  #< file for saving the job record, so we can check if it's running
+    my $job = eval{ retrieve( $save_file ) };
+
+    if( $job && eval {$job->alive} ) {
+	print "using existing, running job ".$job->job_id."\n";
+    } else {
+	$job = submit_job( $jobdir, $donefile, $pairs );
+	nstore( $job, $save_file );
     }
-
-    my %job_record = ( pairs    => $pairs_file,
-		       dir      => $jobdir->stringify,
-		       donefile => $donefile->stringify,
-		       script => <<'EOS',
-		       use CXGN::Tools::Run;
-                       use autodie ':all';
-
-		       my $pair_number = 0;
-                       open my $pairs, $j->{pairs};
-                       while( my $p = <$pairs> ) {
-                         $p = eval $p;
-                         my ($cdna, $genomic) = @$p;
-                         my $outfile = $j->{dir}.'/'.++$out_cnt.'.xml';
-                         #system "echo $cdna, $genomic > $outfile"; next;
-			 CXGN::Tools::Run->run( 'gth',
-						'-xmlout',
-						'-force', #overwrite output
-						-minalignmentscore => '0.90',
-						-mincoverage       => '0.90',
-						-seedlength        => 16,
-						-o                 => $outfile,
-						-species           => 'arabidopsis',
-						-cdna              => $cdna,
-						-genomic           => $genomic,
-			                      );
-		       }
-		       open my $f, '>', $j->{donefile};
-                       print $f "done\n";
-EOS
-	             );
-
-    my $vmem_est = max map estimate_vmem( $_->[0], $_->[1] ), @$pairs;
-
-    my $jobfile = $jobdir->file('job.dat');
-    nstore \%job_record, $jobfile;
-
-    my $job = CXGN::Tools::Run->run_cluster( 'itag_wrapper',
-					     'perl',
-					     '-MStorable=retrieve',
-					     -E => q|my $j = retrieve($ARGV[0]) or die; eval $j->{script}; die $@ if $@|,
-					     $jobfile,
-					     {
-						 temp_base => $jobdir,
-						 vmem => $vmem_est,
-					     },
-	                                   );
-
-    print "submitted as ".$job->job_id."\n";
 
     push @jobs, $job;
 
     $_->alive for @jobs;
 }
+
 
 sleep 10 while grep $_->alive, @jobs;
 
@@ -210,7 +163,7 @@ sub generate_cdna_input {
     $input_dir->mkpath;
 
     my $pipe = CXGN::ITAG::Pipeline->open( version => 1 );
-    my $batch = $pipe->batch( 5 );
+    my $batch = $pipe->batch( $batch_number );
     my $an = $pipe->analysis( 'renaming' );
 
     my $all_seqs = File::Temp->new;
@@ -234,4 +187,71 @@ sub _cdna_file_list {
     my @files;
     $input_dir->recurse( callback => sub { $_ = shift; push @files, $_ if -f && /\.fa$/ } );
     return \@files;
+}
+
+
+sub submit_job {
+    my ( $jobdir, $donefile, $pairs ) = @_;
+
+    system "rm -rf $jobdir";
+    $jobdir->mkpath;
+
+    my $pairs_file = $jobdir->file('pairs');
+    { local $Data::Dumper::Indent = 0;
+      local $Data::Dumper::Terse  = 1;
+      my $pairs_fh  = $pairs_file->openw;
+      $pairs_fh->say( Dumper [ "$_->[0]", "$_->[1]" ] ) for @$pairs;
+    }
+
+    my %job_record = ( pairs    => $pairs_file,
+		       dir      => $jobdir->stringify,
+		       donefile => $donefile->stringify,
+		       script => <<'EOS',
+		       use CXGN::Tools::Run;
+                       use autodie ':all';
+
+		       my $pair_number = 0;
+                       open my $pairs, $j->{pairs};
+                       while( my $p = <$pairs> ) {
+                         $p = eval $p;
+                         my ($cdna, $genomic) = @$p;
+                         my $outfile = $j->{dir}.'/'.++$out_cnt.'.xml';
+                         #system "echo $cdna, $genomic > $outfile"; next;
+			 CXGN::Tools::Run->run( 'gth',
+						'-xmlout',
+						'-force', #overwrite output
+						-minalignmentscore => '0.90',
+						-mincoverage       => '0.90',
+						-seedlength        => 16,
+						-o                 => $outfile,
+						-species           => 'arabidopsis',
+						-cdna              => $cdna,
+						-genomic           => $genomic,
+			                      );
+		       }
+		       open my $f, '>', $j->{donefile};
+                       print $f "done\n";
+EOS
+	             );
+
+    my $vmem_est = max map estimate_vmem( $_->[0], $_->[1] ), @$pairs;
+
+    my $jobfile = $jobdir->file('job.dat');
+    nstore \%job_record, $jobfile;
+    print "jobfile $jobfile\n";
+
+    my $job = CXGN::Tools::Run->run_cluster( 'itag_wrapper',
+					     'perl',
+					     '-MStorable=retrieve',
+					     -E => q|my $j = retrieve($ARGV[0]); eval $j->{script}; die $@ if $@|,
+					     $jobfile,
+					     {
+						 temp_base => $jobdir,
+						 vmem      => $vmem_est,
+					     },
+	                                   );
+
+    print "submitted as ".$job->job_id."\n";
+
+    return $job;
 }
