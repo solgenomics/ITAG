@@ -23,7 +23,6 @@ use CXGN::ITAG::SeqSource::Fasta;
 
 my $genomic_chunks = 100;
 my $cdna_chunks    = 20;
-# = 2000 jobs
 
 ###########
 $SIG{__DIE__} = \&Carp::confess;
@@ -49,15 +48,19 @@ foreach my $pairs ( @file_pair_sets ) {
     # each $pairs is an arrayref like [ [c,g],[c,g],[c,g], ... ]
 
     my $jobdir  = dir( 'jobs', ++$job_number );
-    system "rm -rf $jobdir";
-    $jobdir->mkpath;
 
     print "job $job_number - $jobdir - ".@$pairs." pairs\n";
 
-    if( -f  $jobdir->file('done') ) {
+    my $donefile = $jobdir->file('done');
+    if( -f $donefile  ) {
 	print "done, skipping.\n";
 	next;
+    } else {
+	print "no file $donefile\n";
     }
+
+    system "rm -rf $jobdir";
+    $jobdir->mkpath;
 
     my $pairs_file = $jobdir->file('pairs');
     { local $Data::Dumper::Indent = 0;
@@ -66,8 +69,9 @@ foreach my $pairs ( @file_pair_sets ) {
       $pairs_fh->say( Dumper [ "$_->[0]", "$_->[1]" ] ) for @$pairs;
     }
 
-    my %job_record = ( pairs   => $pairs_file,
-		       dir     => $jobdir->stringify,
+    my %job_record = ( pairs    => $pairs_file,
+		       dir      => $jobdir->stringify,
+		       donefile => $donefile->stringify,
 		       script => <<'EOS',
 		       use CXGN::Tools::Run;
                        use autodie ':all';
@@ -90,7 +94,8 @@ foreach my $pairs ( @file_pair_sets ) {
 						-genomic           => $genomic,
 			                      );
 		       }
-		       open my $f, '>', $j->{dir}.'/done';
+		       open my $f, '>', $j->{donefile};
+                       print $f "done\n";
 EOS
 	             );
 
