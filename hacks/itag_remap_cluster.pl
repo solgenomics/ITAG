@@ -9,6 +9,8 @@ use Storable qw/ nstore retrieve /;
 use Data::Dumper;
 use List::Util qw/ shuffle max /;
 
+use Getopt::Std;
+
 use File::Path qw/ make_path remove_tree /;
 
 use Path::Class;
@@ -19,13 +21,17 @@ use CXGN::Tools::List qw/ balanced_split /;
 use CXGN::ITAG::Pipeline;
 use CXGN::ITAG::SeqSource::Fasta;
 
+our %opt;
+getopts('g:c:',\%opt) or usage();
 ###########
 
-my $genomic_chunks = 100;
-my $cdna_chunks    = 20;
+my $genomic_chunks = $opt{g} || 200;
+my $cdna_chunks    = $opt{c} || 30;
 my $batch_number   = 5;
 
 ###########
+
+
 $SIG{__DIE__} = \&Carp::confess;
 
 my $cdna_dir    = dir( 'input/cdna' );
