@@ -11,26 +11,40 @@ use List::Util qw/ shuffle max /;
 
 use Getopt::Std;
 
+use Set::CrossProduct;
+
 use File::Path qw/ make_path remove_tree /;
 
 use Path::Class;
 
 use Bio::SeqIO;
 
-use CXGN::Tools::List qw/ balanced_split /;
+use CXGN::Tools::List qw/ balanced_split_sizes /;
 use CXGN::ITAG::Pipeline;
 use CXGN::ITAG::SeqSource::Fasta;
 
+# auto-flush our output for more timely status messages
+$| = 1;
+
 our %opt;
-getopts('g:c:',\%opt) or usage();
+getopts('g:c:Vj:',\%opt) or die 'invalid usage';
 ###########
 
-my $genomic_chunks = $opt{g} || 200;
+my $genomic_chunks = $opt{g} || 300;
 my $cdna_chunks    = $opt{c} || 30;
+my $job_chunks     = $opt{j} || 1000;
 my $batch_number   = 5;
 
 ###########
 
+if( $opt{V} ) {
+    die 2**20 * estimate_vmem(@ARGV);
+}
+
+# check the number of files expected in job output dirs under these settings
+if( 31999 < (my $expected_job_outfiles = 3 + $genomic_chunks * $cdna_chunks / $job_chunks)) {
+    die "invalid settings, these would make each job dir have $expected_job_outfiles files in it.\n";
+}
 
 $SIG{__DIE__} = \&Carp::confess;
 
@@ -38,25 +52,31 @@ my $cdna_dir    = dir( 'input/cdna' );
 my $genomic_dir = dir( 'input/genomic' );
 my $jobs_dir    = dir( 'jobs' );
 
-# and now we generate an all-versus-all pairing of genomic and cdna files
-my @file_pair_sets = do {
-    my $cdna_files    = generate_cdna_input   ( $cdna_chunks, $cdna_dir, $jobs_dir );
-    my $genomic_files = generate_genomic_input( 'genomic.fa', $genomic_chunks, $genomic_dir, $jobs_dir );
+my $cdna_files    = generate_cdna_input   ( 'cdna.fa',  $cdna_chunks, $cdna_dir, $jobs_dir );
+my $genomic_files = generate_genomic_input( 'genomic.fa', $genomic_chunks, $genomic_dir, $jobs_dir );
 
-    # now generate an all-vs-all array of pairs of files that need to
-    # be against eachother, and do a balanced_split on that to batch
-    # them into (at most) 200 cluster jobs
-    balanced_split( 200, map { my $g = $_; map [ $_, $g ], @$cdna_files } @$genomic_files );
-};
+# check all the vmem estimates for our job sizes 
+# print "checking memory requirement estimates...\n";
+# { my $max_vmem = 5000;
+#   my $max_g = largest_file( @$genomic_files );
+#   my $max_c = largest_file( @$cdna_files    );
+#   my $vmem_est = estimate_vmem( $max_c, $max_g );
+#   $vmem_est > $max_vmem
+#       and die "vmem estimate $vmem_est for file $max_c vs $max_g is more than max $max_vmem. aborting.\n";
+# }
 
+my $file_pairs = Set::CrossProduct->new( [ $cdna_files, $genomic_files ] );
+my $job_sizes = balanced_split_sizes( $job_chunks, $file_pairs->cardinality );
 my @jobs;
 my $job_number = 0;
-foreach my $pairs ( @file_pair_sets ) {
-    # each $pairs is an arrayref like [ [c,g],[c,g],[c,g], ... ]
-
+foreach my $jobsize ( @$job_sizes ) {
     my $jobdir  = $jobs_dir->subdir( ++$job_number );
 
-    print "job $job_number - $jobdir - ".@$pairs." pairs\n";
+    print "job $job_number - $jobdir - $jobsize pairs\n";
+
+    my @pairs;    my $jobsize_copy = $jobsize;
+    push @pairs, scalar $file_pairs->get
+	while $jobsize_copy--; #< minimizing memory footprint
 
     my $donefile  = $jobdir->file('done');
     if( -f $donefile  ) {
@@ -64,20 +84,26 @@ foreach my $pairs ( @file_pair_sets ) {
 	next;
     }
 
-
     my $save_file = $jobdir->file('job.save');  #< file for saving the job record, so we can check if it's running
-    my $job = eval{ retrieve( $save_file ) };
+    my $job;
+    if( -f $save_file ) {
+	$job = eval {retrieve( $save_file )};
+	warn $@ if $@;
+    }
 
     if( $job && eval {$job->alive} ) {
 	print "using existing, running job ".$job->job_id."\n";
     } else {
-	$job = submit_job( $jobdir, $donefile, $pairs );
+	$job = submit_job( $jobdir, $donefile, \@pairs );
 	nstore( $job, $save_file );
     }
 
     push @jobs, $job;
 
-    $_->alive for @jobs;
+    for my $j ( @jobs ) {
+	eval { $j->alive };
+	warn $@ if $@;
+    }
 }
 
 
@@ -88,8 +114,9 @@ $_->cleanup for @jobs;
 exit;
 
 ######### SUBS
-# estimates the resources for each sequence name, used for giving resource hints to the job scheduler
 
+# estimates the resources for each sequence name, used for giving
+# resource hints to the resource manager (which, currently, is Torque)
 sub estimate_vmem {
     my ( $cdna_file, $genomic_file ) = @_;
 
@@ -101,10 +128,11 @@ sub estimate_vmem {
     my $megs = 2**20;
     my $vmem_est = sprintf('%0.0f',
 			   (   200*$megs
-			     + '5e-05' * $genomic_size * $cdna_size
+			     + 10*($genomic_size + $cdna_size)
+			     + '2.2e-04' * $genomic_size * $cdna_size
                            )/$megs
 			  );
-    #print "cdna size: $cdna_size, seq size: $seq_size => vmem $vmem_est M\n";
+    #print "cdna $cdna_size, genomic size: $genomic_size => vmem $vmem_est M\n";
 
     return $vmem_est;
 }
@@ -128,10 +156,14 @@ sub generate_genomic_input {
 	print "using cached genomic input.\n";
     }
     my @files;
-    $input_dir->recurse( callback => sub { $_ = shift; push @files, $_ if -f && /\.fa$/ } );
+    $input_dir->recurse( callback => sub { $_ = shift; _cached_file_size($_); push @files, $_ if -f && /\.fa$/ } );
     return \@files;
 }
 
+memoize('_cached_file_size');
+sub _cached_file_size {
+    -s $_[0]
+}
 
 sub chunk_fasta_file {
     my ( $file, $chunk_count, $dir, $make_name ) = @_;
@@ -142,7 +174,7 @@ sub chunk_fasta_file {
 
     my $src = CXGN::ITAG::SeqSource::Fasta->new( file => $file );
     my $chunk_idx;
-    foreach my $chunk ( balanced_split( $chunk_count, shuffle $src->all_seq_names ) ) {
+    foreach my $chunk ( @{ balanced_split( $chunk_count, [ shuffle $src->all_seq_names ] ) } ) {
 	my $out = Bio::SeqIO->new( -format => 'fasta',
 				   -file => '>'.$make_name->( $dir, ++$chunk_idx, $chunk ),
 				  );
@@ -154,6 +186,7 @@ sub chunk_fasta_file {
 }
 
 sub generate_cdna_input {
+    my $all_seqs = shift;
     my $chunk_count = shift;
     my $input_dir = dir( shift );
 
@@ -168,18 +201,6 @@ sub generate_cdna_input {
     system "rm -rf $input_dir";
     $input_dir->mkpath;
 
-    my $pipe = CXGN::ITAG::Pipeline->open( version => 1 );
-    my $batch = $pipe->batch( $batch_number );
-    my $an = $pipe->analysis( 'renaming' );
-
-    my $all_seqs = File::Temp->new;
-    foreach ( sort $batch->seqlist ) {
-	my (undef,undef,undef,$cdna_file) = $an->files_for_seq( $batch, $_ );
-	next unless -f $cdna_file;
-	my $fh = file( $cdna_file )->openr;
-	$all_seqs->print( $_ ) while <$fh>;
-    }
-
     chunk_fasta_file( $all_seqs, $chunk_count, $input_dir );
 
     $donefile->openw->print("done\n");
@@ -191,14 +212,13 @@ sub generate_cdna_input {
 sub _cdna_file_list {
     my $input_dir = shift;
     my @files;
-    $input_dir->recurse( callback => sub { $_ = shift; push @files, $_ if -f && /\.fa$/ } );
+    $input_dir->recurse( callback => sub { $_ = shift; _cached_file_size($_); push @files, $_ if -f && /\.fa$/ } );
     return \@files;
 }
 
 
 sub submit_job {
     my ( $jobdir, $donefile, $pairs ) = @_;
-
     system "rm -rf $jobdir";
     $jobdir->mkpath;
 
@@ -226,7 +246,7 @@ sub submit_job {
 			 CXGN::Tools::Run->run( 'gth',
 						'-xmlout',
 						'-force', #overwrite output
-						-minalignmentscore => '0.90',
+						-minalignmentscore => '0.97',
 						-mincoverage       => '0.90',
 						-seedlength        => 16,
 						-o                 => $outfile,
@@ -244,7 +264,6 @@ EOS
 
     my $jobfile = $jobdir->file('job.dat');
     nstore \%job_record, $jobfile;
-    print "jobfile $jobfile\n";
 
     my $job = CXGN::Tools::Run->run_cluster( 'itag_wrapper',
 					     'perl',
@@ -257,7 +276,21 @@ EOS
 					     },
 	                                   );
 
-    print "submitted as ".$job->job_id."\n";
+    print "submitted as ".$job->job_id.", est. vmem $vmem_est\n";
 
     return $job;
+}
+
+# finds the largest of a list of files
+sub largest_file {
+    my $s = 0;
+    my $f;
+    for (@_) {
+	my $ts = -s;
+	if( $ts > $s ) {
+	    $s = $ts;
+	    $f = $_;
+	}
+    }
+    return $f;
 }
