@@ -19,7 +19,7 @@ use Path::Class;
 
 use Bio::SeqIO;
 
-use CXGN::Tools::List qw/ balanced_split_sizes /;
+use CXGN::Tools::List qw/ balanced_split balanced_split_sizes /;
 use CXGN::ITAG::Pipeline;
 use CXGN::ITAG::SeqSource::Fasta;
 
@@ -41,9 +41,16 @@ if( $opt{V} ) {
     die 2**20 * estimate_vmem(@ARGV);
 }
 
-# check the number of files expected in job output dirs under these settings
-if( 31999 < (my $expected_job_outfiles = 3 + $genomic_chunks * $cdna_chunks / $job_chunks)) {
+# check the number of files expected in job output dirs under these setting
+my $expected_job_outfiles =
+    3 #control files
+    + int($genomic_chunks * $cdna_chunks / $job_chunks ); #.xml output files
+my $tempdir_files = int((13 * $genomic_chunks + 8 * $cdna_chunks) / $job_chunks); # tempdir files
+if( 31999 < $expected_job_outfiles ) {
     die "invalid settings, these would make each job dir have $expected_job_outfiles files in it.\n";
+}
+if( 31999 < $tempdir_files ) {
+    die "invalid settings, these would make each job temp dir have $tempdir_files files in it.\n";
 }
 
 $SIG{__DIE__} = \&Carp::confess;
@@ -56,23 +63,24 @@ my $cdna_files    = generate_cdna_input   ( 'cdna.fa',  $cdna_chunks, $cdna_dir,
 my $genomic_files = generate_genomic_input( 'genomic.fa', $genomic_chunks, $genomic_dir, $jobs_dir );
 
 # check all the vmem estimates for our job sizes 
-# print "checking memory requirement estimates...\n";
-# { my $max_vmem = 5000;
-#   my $max_g = largest_file( @$genomic_files );
-#   my $max_c = largest_file( @$cdna_files    );
-#   my $vmem_est = estimate_vmem( $max_c, $max_g );
-#   $vmem_est > $max_vmem
-#       and die "vmem estimate $vmem_est for file $max_c vs $max_g is more than max $max_vmem. aborting.\n";
-# }
+print "checking memory requirement estimates...\n";
+{ my $max_vmem = 5000;
+  my $max_g = largest_file( @$genomic_files );
+  my $max_c = largest_file( @$cdna_files    );
+  my $vmem_est = estimate_vmem( $max_c, $max_g );
+  $vmem_est > $max_vmem
+      and die "vmem estimate $vmem_est for file $max_c vs $max_g is more than max $max_vmem. aborting.\n";
+}
 
-my $file_pairs = Set::CrossProduct->new( [ $cdna_files, $genomic_files ] );
+my $file_pairs = Set::CrossProduct->new( [ $genomic_files, $cdna_files ] );
 my $job_sizes = balanced_split_sizes( $job_chunks, $file_pairs->cardinality );
+my $numjobs = @$job_sizes;
 my @jobs;
 my $job_number = 0;
 foreach my $jobsize ( @$job_sizes ) {
     my $jobdir  = $jobs_dir->subdir( ++$job_number );
 
-    print "job $job_number - $jobdir - $jobsize pairs\n";
+    print "job $job_number/$numjobs - $jobsize pairs\n";
 
     my @pairs;    my $jobsize_copy = $jobsize;
     push @pairs, scalar $file_pairs->get
@@ -120,16 +128,16 @@ exit;
 sub estimate_vmem {
     my ( $cdna_file, $genomic_file ) = @_;
 
-    my $cdna_size = -s $cdna_file
+    my $cdna_size = _cached_file_size( $cdna_file )
 	or die "sanity check failed, no size found for cdna file $cdna_file";
-    my $genomic_size = -s $genomic_file
+    my $genomic_size = _cached_file_size( $genomic_file )
 	or die "sanity check failed, no size found for genomic file $genomic_file";
 
     my $megs = 2**20;
     my $vmem_est = sprintf('%0.0f',
 			   (   200*$megs
-			     + 10*($genomic_size + $cdna_size)
-			     + '2.2e-04' * $genomic_size * $cdna_size
+			     + 100*($genomic_size + $cdna_size)
+			     + '3e-03' * $genomic_size * $cdna_size
                            )/$megs
 			  );
     #print "cdna $cdna_size, genomic size: $genomic_size => vmem $vmem_est M\n";
@@ -233,17 +241,34 @@ sub submit_job {
 		       dir      => $jobdir->stringify,
 		       donefile => $donefile->stringify,
 		       script => <<'EOS',
-		       use CXGN::Tools::Run;
-                       use autodie ':all';
+		       use Cwd 'abs_path';
+		       use autodie ':all';
+		       use File::Temp;
+		       use File::Basename;
 
+		       my $tempd;
+		       my $tempd_count = 0;
 		       my $pair_number = 0;
                        open my $pairs, $j->{pairs};
                        while( my $p = <$pairs> ) {
                          $p = eval $p;
-                         my ($cdna, $genomic) = @$p;
+                         my ($genomic,$cdna) = @$p;
+
+			 # make a new tempdir every 300 runs of gth
+			 if( !$tempd || $tempd_count++ > 300 ) {
+			     $tempd = File::Temp->newdir( CLEANUP => 1 );
+			     $tempd_count = 0;
+			 }
+
+			 # make tempfiles
+			 my $cdna_s = "$tempd/c_".basename($cdna);
+			 my $genomic_s = "$tempd/g_".basename($genomic);
+			 symlink abs_path($cdna), $cdna_s unless -e $cdna_s;
+			 symlink abs_path($genomic), $genomic_s unless -e $genomic_s;
+
                          my $outfile = $j->{dir}.'/'.++$out_cnt.'.xml';
                          #system "echo $cdna, $genomic > $outfile"; next;
-			 CXGN::Tools::Run->run( 'gth',
+			 system( 'gth',
 						'-xmlout',
 						'-force', #overwrite output
 						-minalignmentscore => '0.97',
@@ -251,8 +276,8 @@ sub submit_job {
 						-seedlength        => 16,
 						-o                 => $outfile,
 						-species           => 'arabidopsis',
-						-cdna              => $cdna,
-						-genomic           => $genomic,
+						-cdna              => $cdna_s,
+						-genomic           => $genomic_s,
 			                      );
 		       }
 		       open my $f, '>', $j->{donefile};
@@ -286,7 +311,7 @@ sub largest_file {
     my $s = 0;
     my $f;
     for (@_) {
-	my $ts = -s;
+	my $ts = _cached_file_size($_);
 	if( $ts > $s ) {
 	    $s = $ts;
 	    $f = $_;
