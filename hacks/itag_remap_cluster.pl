@@ -69,7 +69,7 @@ print "checking memory requirement estimates...\n";
   my $max_c = largest_file( @$cdna_files    );
   my $vmem_est = estimate_vmem( $max_c, $max_g );
   $vmem_est > $max_vmem
-      and die "vmem estimate $vmem_est for file $max_c vs $max_g is more than max $max_vmem. aborting.\n";
+      and warn "WARNING: vmem estimate $vmem_est for file $max_c vs $max_g is more than max $max_vmem.\n";
 }
 
 my $file_pairs = Set::CrossProduct->new( [ $genomic_files, $cdna_files ] );
@@ -137,7 +137,7 @@ sub estimate_vmem {
     my $vmem_est = sprintf('%0.0f',
 			   (   200*$megs
 			     + 100*($genomic_size + $cdna_size)
-			     + '3e-03' * $genomic_size * $cdna_size
+			     + '1.2e-02' * $genomic_size * $cdna_size
                            )/$megs
 			  );
     #print "cdna $cdna_size, genomic size: $genomic_size => vmem $vmem_est M\n";
