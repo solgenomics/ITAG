@@ -27,7 +27,7 @@ open my $done_fh, ">>", $donefile;
 while( my $xml_file = <$files> ) {
     chomp $xml_file;
     if( $already_done{$xml_file} ) {
-	print "file $xml_file already done, skipping.\n";
+	warn "file $xml_file already done, skipping.\n";
 	next;
     }
 
