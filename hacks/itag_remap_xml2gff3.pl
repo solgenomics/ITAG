@@ -2,7 +2,6 @@
 use strict;
 use warnings;
 use autodie ':all';
-use Path::Class;
 
 use Carp;
 
@@ -13,12 +12,14 @@ use 5.10.0;
 my @dirs = @ARGV
     or die "must provide a list of directories\n";
 
-my $donefile = 'already_done';
+my $donefile = 'xml2gff.already_done';
 
 my %already_done = do {
     if( -f $donefile ) {
-	open my $d, $donefile;
-	map { chomp; $_ => 1 } <$already_done>
+	open my $d, '<', $donefile;
+	map { chomp; ($_ => 1) } <$d>
+    } else {
+	()
     }
 };
 
@@ -33,10 +34,16 @@ while( my $xml_file = <$files> ) {
 
     my $gff3_out_file = File::Temp->new;
     $gff3_out_file->close;
-    GTH_XML_2_GFF3->_gthxml_to_gff3( $xml_file, "$gff3_out_file" );
-    my $fh = file( "$gff3_out_file" )->openr;
-    print while <$fh>;
-    print $done_fh "$xml_file\n";
+    eval {
+	GTH_XML_2_GFF3->_gthxml_to_gff3( $xml_file, "$gff3_out_file" );
+    };
+    unless( $@ ) {
+	open my $fh,'<', "$gff3_out_file";
+	print while <$fh>;
+	print $done_fh "$xml_file\n";
+    } else {
+	warn "$xml_file parse failed:\n$@";
+    }
 }
 
 #use Data::Dumper;
