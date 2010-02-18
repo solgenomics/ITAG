@@ -9,47 +9,180 @@ use Getopt::Std;
 
 use 5.10.0;
 
-my @dirs = @ARGV
-    or die "must provide a list of directories\n";
+
+my ($outfile,@dirs) = @ARGV;
+@dirs or die "must provide a list of directories\n";
 
 my $donefile = 'xml2gff.already_done';
 
-my %already_done = do {
-    if( -f $donefile ) {
-	open my $d, '<', $donefile;
-	map { chomp; ($_ => 1) } <$d>
-    } else {
-	()
-    }
-};
+my $jobs = parallel_gthxml_to_gff3->new( donefile => $donefile, outfile => $outfile, dirs => \@dirs );
+$jobs->max_workers( 12 );
+$jobs->run;
 
-open my $files, "find @dirs -type f -and -name '*.xml' |";
-open my $done_fh, ">>", $donefile;
-while( my $xml_file = <$files> ) {
-    chomp $xml_file;
-    if( $already_done{$xml_file} ) {
-	warn "file $xml_file already done, skipping.\n";
-	next;
-    }
+exit;
 
-    my $gff3_out_file = File::Temp->new;
-    $gff3_out_file->close;
-    eval {
-	GTH_XML_2_GFF3->_gthxml_to_gff3( $xml_file, "$gff3_out_file" );
-    };
-    unless( $@ ) {
-	open my $fh,'<', "$gff3_out_file";
-	print while <$fh>;
-	print $done_fh "$xml_file\n";
-    } else {
-	warn "$xml_file parse failed:\n$@";
+
+#######  PACKAGES ##########################
+
+
+BEGIN {
+package parallel_gthxml_to_gff3;
+use Moose;
+use MooseX::Types::Path::Class;
+use File::Flock;
+
+with 'MooseX::Workers';
+
+# file where we store which xml files we have already processed
+has 'donefile'   => ( is => 'ro',
+                      isa => 'Path::Class::File',
+                      required => 1,
+                      coerce => 1,
+                     );
+
+# append our gff3 output to this file
+has 'outfile'    => ( is => 'ro',
+                      isa => 'Path::Class::File',
+                      required => 1,
+                      coerce => 1,
+                     );
+
+# keep a hashref of what files were done when we started,
+# parsed from our donefile on program start
+has 'files_done' => ( is => 'ro',
+                      isa => 'HashRef',
+                      lazy_build => 1,
+                      traits => ['Hash'],
+                      handles => {
+                          is_done => 'get'
+                         },
+                     ); sub _build_files_done {
+                         my ( $self ) = @_;
+
+                         return {} unless -f $self->donefile;
+
+                         my %done;
+                         my $d = $self->donefile->openr;
+                         $done{ $_ } = 1 while <$d>;
+                         return \%done;
+                     }
+
+#arrayref of dirs we are searching for files
+has 'dirs'  => ( is => 'ro',
+                 isa => 'ArrayRef',
+                 required => 1,
+                );
+
+# run a find process to find the XML files we want
+has 'find_handle' => ( is => 'ro',
+                       isa => 'FileHandle',
+                       lazy_build => 1,
+                      ); sub _build_find_handle {
+                          open my $f, "find ".join(' ',@{shift->dirs})." -type f -and -name '*.xml' |";
+                          return $f;
+                      }
+
+sub _queue_jobs {
+    my $self = shift;
+
+    my $files = $self->find_handle;
+
+    while( my $xml_file = <$files> ) {
+	chomp $xml_file;
+	if( $self->is_done($xml_file) ) {
+	    warn "file $xml_file already done, skipping.\n";
+	    next;
+	}
+
+	$self->enqueue(sub {
+            my $gff3_out_file = File::Temp->new;
+	    $gff3_out_file->close;
+	    eval {
+                GTH_XML_2_GFF3->gthxml_to_gff3( $xml_file, "$gff3_out_file" );
+	    };
+	    if( $@ ) {
+                warn "$xml_file parse failed:\n$@";
+	    } else {
+                # dump the converted results to our output file
+                open my $gff3_fh,'<', "$gff3_out_file";
+                { my $l = File::Flock->new( $self->outfile );
+                  my $out_fh = $self->outfile->open('>>');
+                  $out_fh->print($_) while <$gff3_fh>;
+                }
+
+                # record this file as done
+                { my $l = File::Flock->new( $self->donefile );
+                  $self->donefile->openw->print("$xml_file\n")
+                }
+	    }
+	});
     }
 }
 
-#use Data::Dumper;
+# wrap MX::Workers enqueue to just take an xml file name, and generate
+# the worker for it
+around enqueue => sub {
+    my ( $orig, $self, $xml_file ) = @_;
 
-# my %opt;
-# getopts('',\%opt) or pod2usage(1);
+    return if $self->is_done( $xml_file );
+
+    $self->$orig(sub {
+        my $gff3_out_file = File::Temp->new;
+        $gff3_out_file->close;
+        eval {
+            GTH_XML_2_GFF3->gthxml_to_gff3( $xml_file, "$gff3_out_file" );
+        };
+        if( $@ ) {
+            warn "$xml_file parse failed:\n$@";
+        } else {
+            # dump the converted results to our output file
+            open my $gff3_fh,'<', "$gff3_out_file";
+            { my $l = File::Flock->new( $self->outfile );
+              my $out_fh = $self->outfile->open('>>');
+              $out_fh->print($_) while <$gff3_fh>;
+          }
+
+            # record this file as done
+            { my $l = File::Flock->new( $self->donefile );
+              $self->donefile->openw->print("$xml_file\n")
+          }
+        }
+    });
+};
+
+sub run {
+    my $self = shift;
+    my $files = $self->find_handle;
+    for (1 .. $self->max_workers ) {
+        my $xml_file = <$files>;
+        last unless defined $xml_file;
+        $self->enqueue($xml_file);
+    }
+    POE::Kernel->run;
+}
+
+#sub worker_done    { shift; warn join ' ', @_; }
+sub worker_done {
+    my $self = shift;
+    my $files = $self->find_handle;
+    while (1) {
+        my $xml_file = <$files>;
+        last unless defined $xml_file;
+        $self->enqueue( $xml_file );
+    }
+}
+
+# sub worker_manager_start { warn 'started worker manager' }
+# sub worker_manager_stop  { warn 'stopped worker manager' }
+# sub max_workers_reached  { warn 'max workers reached' }
+
+# sub worker_stdout  { shift; warn join ' ', @_; }
+# sub worker_stderr  { shift; warn join ' ', @_; }
+# sub worker_error   { shift; warn join ' ', @_; }
+# sub worker_started { shift; warn join ' ', @_; }
+# sub sig_child      { shift; warn join ' ', @_; }
+
+no Moose;
 
 package GTH_XML_2_GFF3;
 use strict;
@@ -59,47 +192,47 @@ use English qw/ -no_match_vars /;
 use Bio::SeqIO;
 use Bio::FeatureIO;
 
-sub _gthxml_to_gff3 {
+sub gthxml_to_gff3 {
     my ( $class, $outfile, $gff3_out_file ) = @_;
 
     my $pm = $class->_parse_mode;
     $pm eq 'alignments'
-        and die "_parse_mode() cannot be 'alignments'.  consider using 'alignments_merged'";
+	and die "_parse_mode() cannot be 'alignments'.  consider using 'alignments_merged'";
     eval {
-        my $gth_in = Bio::FeatureIO->new( -format => 'gthxml', -file => $outfile,
-					  -mode => $pm,
-					  -attach_alignments => 1,
-					 );
-        my $gff3_out = $class->_open_gff3_out( $gff3_out_file );
-        while ( my $f = $gth_in->next_feature ) {
-	
-            # set each feature's source to the name of the gth subclass that's running this
-            $class->_recursive_set_source( $f, $class->_source );
+	my $gth_in = Bio::FeatureIO->new( -format => 'gthxml', -file => $outfile,
+                	  -mode => $pm,
+                	  -attach_alignments => 1,
+                	 );
+	my $gff3_out = $class->_open_gff3_out( $gff3_out_file );
+	while ( my $f = $gth_in->next_feature ) {
 
-            # do additional processing on the feature if necessary
-            # (can be implemented in subclasses)
-            $class->_process_gff3_feature( $f );
+	    # set each feature's source to the name of the gth subclass that's running this
+	    $class->_recursive_set_source( $f, $class->_source );
 
-            # make some ID and Parent tags in the subfeatures
-            $class->_make_gff3_id_and_parent($f);
+	    # do additional processing on the feature if necessary
+	    # (can be implemented in subclasses)
+	    $class->_process_gff3_feature( $f );
+
+	    # make some ID and Parent tags in the subfeatures
+	    $class->_make_gff3_id_and_parent($f);
 
 	    # stringify the supporting_alignment's to their IDs
 	    $f->add_Annotation('supporting_alignment',$_)
-		for map { $_->value->get_Annotations('ID') }
-		    $f->remove_Annotations('supporting_alignment');
+        for map { $_->value->get_Annotations('ID') }
+            $f->remove_Annotations('supporting_alignment');
 
-            # write the feature to the gff3 file
-            $gff3_out->write_feature($f);
-        }
+	    # write the feature to the gff3 file
+	    $gff3_out->write_feature($f);
+	}
     }; if( $EVAL_ERROR ) {
-        #workaround for a gth bug.  will probably be fixed when we upgrade gth
-        die $EVAL_ERROR unless $EVAL_ERROR =~ /not well-formed \(invalid token\)/;
-        open my $gff3, '>', $gff3_out_file;
-        print $gff3 <<EOF;
+	#workaround for a gth bug.  will probably be fixed when we upgrade gth
+	die $EVAL_ERROR unless $EVAL_ERROR =~ /not well-formed \(invalid token\)/;
+	open my $gff3, '>', $gff3_out_file;
+	print $gff3 <<EOF;
 ##gff-version 3
 # no results.  genomethreader produced invalid output XML.
 EOF
-        open my $out, '>', $outfile;
+	open my $out, '>', $outfile;
     }
 }
 
@@ -127,9 +260,9 @@ sub _open_gff3_out {
 
   # handle for out merged output file
   return Bio::FeatureIO->new( -file => ">$outfile",
-			      -format => 'gff',
-			      -version => 3,
-                            );
+        	      -format => 'gff',
+        	      -version => 3,
+        	    );
 }
 
 
@@ -170,7 +303,7 @@ sub _feature_id {
     $target_id.'_alignment'
   } elsif ( $feat->type->name eq 'region') {
     'PGL'
-  } else {			#just name the feature for its source and type
+  } else {        	#just name the feature for its source and type
     my $src = $feat->source;
     $src =~ s/GenomeThreader/GTH/; #< shorten the sources a little
     $src =~ s/(tom|pot)ato/$1/; #< shorten the sources a little
@@ -182,3 +315,5 @@ sub _feature_id {
 sub _parse_mode {
   'both_merged';
 }
+
+} # end of BEGIN block
