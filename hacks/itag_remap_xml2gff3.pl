@@ -14,7 +14,12 @@ my ($outfile,@dirs) = @ARGV;
 
 my $donefile = 'xml2gff.already_done';
 
-my $jobs = parallel_gthxml_to_gff3->new( donefile => $donefile, outfile => $outfile, dirs => \@dirs );
+my $jobs = parallel_gthxml_to_gff3->new(
+    donefile => $donefile,
+    outfile  => $outfile,
+    dirs     => \@dirs
+);
+
 $jobs->max_workers( 12 );
 $jobs->run;
 
@@ -95,6 +100,7 @@ around enqueue => sub {
 
     if( $self->is_done( $xml_file ) ) {
 	print "$xml_file skipped\n";
+        return;
     }
     print "$xml_file queued ...\n";
 
@@ -116,7 +122,7 @@ around enqueue => sub {
 		      $out_fh->print($_);
 		  }
 	      }
-          }
+            }
 
             # record this file as done
             { my $l = File::Flock->new( $self->donefile );
@@ -138,7 +144,7 @@ sub run {
     # now queue the first set of jobs
     for (1 .. $self->max_workers ) {
         my $xml_file = <$files>;
-	chomp $xml_file;
+        chomp $xml_file;
         last unless defined $xml_file;
         $self->enqueue($xml_file);
     }
@@ -150,7 +156,7 @@ sub worker_done {
     my $self = shift;
     for( 1, 2 ) {
 	if( my $xml_file = $self->find_handle->getline ) {
-	    chomp $xml_file;
+            chomp $xml_file;
 	    $self->enqueue( $xml_file );
 	}
     }
