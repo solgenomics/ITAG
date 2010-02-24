@@ -100,7 +100,7 @@ sub _common_new {
 
   #set defaults
   $fields->{basedir}
-      or croak 'must supply basedir argument to CXGN::
+      or croak 'must supply basedir argument to CXGN::ITAG::Pipeline constructor';
   $fields->{version} = _most_recent_pipeline_version($fields->{basedir}) unless defined $fields->{version};
 
   #validate
@@ -115,7 +115,7 @@ sub new {
 
 =head2 create
 
-  Usage: my $pipe = CXGN::ITAG::Pipeline->create( version => 1);
+  Usage: my $pipe = CXGN::ITAG::Pipeline->create( version => 1, basedir => $dir );
   Desc : create a new pipeline file structure at the given version
          and basedir
   Args : optional hash-style list, same args as open, except version
@@ -331,7 +331,7 @@ sub list_batches {
 
   Usage: my @pvers = CXGN::ITAG::Pipeline->list_pipelines($basedir)
   Desc : list the versions of all the pipelines present in the given directory
-  Args : (optional) base path to look in, defaults
+  Args : base path to look in
   Ret  : list of pipeline version numbers in ascending order (e.g. (0,1,2))
   Side Effects: none
 
@@ -339,7 +339,7 @@ sub list_batches {
 
 sub list_pipelines {
   my ($self,$basedir) = @_;
-  $basedir ||= _default_base();
+  $basedir or croak 'must provide base dir to list_pipelines()';
 
   return sort {$a <=> $b}
     map {

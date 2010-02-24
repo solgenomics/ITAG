@@ -20,6 +20,7 @@ use CXGN::ITAG::Pipeline;
 ###### CONFIGURATION
 
 our $default_batch_size = 10_000;
+our %global_opt;
 
 ###### /CONFIGURATION
 
@@ -32,7 +33,7 @@ sub usage {
   die <<EOU;
 $message
 Usage:
-  $FindBin::Script [global options] command [cmd options] cmd_arg ...
+  $FindBin::Script -d dir [global opts] command [cmd opts] cmd_arg ...
 
   Script to manage batches in the ITAG distributed annotation
   pipeline.
@@ -60,8 +61,7 @@ Usage:
   Global Options:
 
   -d <dir>
-     set the base directory where all the ITAG files are kept.
-     Defaults to value of configuration var 'itag_pipeline_base'
+      REQUIRED: base directory where all the ITAG files are kept.
 
   -v <num>
      pipeline version to operate on.  Defaults to most recent
@@ -74,10 +74,10 @@ Usage:
 
     #create a new batch in the current pipeline version,
     #using the next available batch num
-    $FindBin::Script create
+    $FindBin::Script -d /data/shared/tomato_genome/itagpipeline create
 
     #delete batch number 2 in pipeline version 4
-    $FindBin::Script -v 4 del 2
+    $FindBin::Script -d /data/shared/tomato_genome/itagpipeline -v 4 del 2
 
 EOU
 }
@@ -178,9 +178,8 @@ sub new {
 }
 
 sub _open_pipe {
-  our %global_opt;
   return CXGN::ITAG::Pipeline->open( version => $global_opt{v},
-				     $global_opt{d} ? (basedir => $global_opt{d}) : (),
+				     basedir => $global_opt{d},
 				   );
 }
 
@@ -361,7 +360,6 @@ sub intense_validate {
       #start some more jobs if we need to
       while ( @vjobs && @running_jobs < $simultaneous_job_limit ) {
 	my @run_args = do {
-	  our %global_opt;
 	  my %pass_opts;	#< pass along any global options we got
 	  $pass_opts{"-$_"} = $global_opt{$_} foreach keys %global_opt;
 
@@ -603,12 +601,10 @@ sub register_command {
 
 # make lock and unlock subs that are disabled by -L
 sub lock_script {
-  our %global_opt;
   return 1 if $global_opt{L};
   CXGN::Tools::Script::lock_script(@_);
 }
 sub unlock_script {
-  our %global_opt;
   return 1 if $global_opt{L};
   CXGN::Tools::Script::unlock_script(@_);
 }
@@ -618,11 +614,7 @@ sub unlock_script {
 #lock_script() or die "$FindBin::Script already running, only run one at a time.\n";
 
 #parse the global options
-our %global_opt;
 getopts('d:v:L',\%global_opt) or usage();
-#set defaults
-$global_opt{d} ||= CXGN::ITAG::Config->load->{'itag_pipeline_base'}
-    or die "no itag_pipeline_base conf variable defined, please set it\n";
 
 #now execute the command
 my $opname = shift @ARGV

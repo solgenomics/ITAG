@@ -20,7 +20,7 @@ sub usage {
   die <<EOU;
 $message
 Usage:
-  $FindBin::Script [options]  email_address
+  $FindBin::Script -d itag_dir  email_address
 
   Scans ITAG pipeline repository for changes, emails the given email
   address about them if it hasn't already.
@@ -31,8 +31,7 @@ Usage:
   Options:
 
   -d <dir>
-    base directory to search for ITAG pipelines.
-    Default: value of CXGN conf var itag_pipeline_base
+    REQUIRED: base directory to search for ITAG pipelines.
 
 EOU
 }
@@ -40,6 +39,7 @@ sub HELP_MESSAGE {usage()}
 
 our %opt;
 getopts('d:',\%opt) or usage();
+$opt{d} or usage();
 
 my ($itag_email) = @ARGV;
 die "must provide an email address\n"
@@ -47,7 +47,7 @@ die "must provide an email address\n"
 die "invalid email address '$itag_email'\n"
   unless $itag_email =~ /^\w+@[\w\.]+\w$/;
 
-my $pipe = CXGN::ITAG::Pipeline->open(  $opt{d} ? (basedir => $opt{d}) : () );
+my $pipe = CXGN::ITAG::Pipeline->open( basedir => $opt{d} );
 
 #open our email log
 our $log = CXGN::IndexedLog->open( File => $pipe->email_log_filename );

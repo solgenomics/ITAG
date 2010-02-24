@@ -6,8 +6,8 @@ itag_generate_release.pl - script to generate a genome annotation release for IT
 
 =head1 SYNOPSIS
 
-  itag_generate_release.pl [options] release_num target_path
-  itag_generate_release.pl [options] -D target_path
+  itag_generate_release.pl [options] -d basepath release_num target_path
+  itag_generate_release.pl [options] -d basepath -D target_path
 
   Using the current output of the ITAG pipeline, generate a genome
   release directory target_path/<release_tag>_<pre?>release/,
@@ -16,9 +16,8 @@ itag_generate_release.pl - script to generate a genome annotation release for IT
   Options:
 
     -d itag_pipeline_path
-       optional path at which to find the itag pipeline directory
+       REQUIRED path at which to find the itag pipeline directory
        structure
-       Default: $default_pipe_dir
 
     -p version
        pipeline version number to use
@@ -72,10 +71,6 @@ use URI::Escape;
 
 use Data::Dumper;
 
-use CXGN::VHost;
-our $vhost = CXGN::VHost->new;
-our $default_pipe_dir = $vhost->get_conf( 'itag_pipeline_base' );
-
 use CXGN::TomatoGenome::BACPublish qw/ genbank_acc_to_seq_name seq_name_to_genbank_acc /;
 use CXGN::ITAG::Pipeline;
 use CXGN::ITAG::Pipeline::Analysis;
@@ -92,6 +87,7 @@ our %opt;
 getopts('d:p:b:PDG',\%opt) or pod2usage(1);
 $opt{m} ||= 1_000_000;
 $opt{P} && $opt{D} and die "-P and -D are mutually exclusive\n";
+$opt{d} or pod2usage('must provide -d option');
 
 my $release_num = $opt{D} ? 0 : shift @ARGV;
 my $target_path = shift @ARGV or pod2usage();
@@ -130,8 +126,8 @@ if(-d $build_directory ) {
 }
 
 # now open our ITAG pipeline, at the right version and base directory
-my $pipe = CXGN::ITAG::Pipeline->open( $opt{p} ? (version => $opt{p}) : (),
-				       $opt{d} ? (basedir => $opt{d}) : (),
+my $pipe = CXGN::ITAG::Pipeline->open( basedir => $opt{d},
+                                       ( $opt{p} ? (version => $opt{p}) : () ),
 				     )
   or die "pipeline directory not found or not openable, do you need to specify a different -d or -p option?\n";
 
