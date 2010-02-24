@@ -81,33 +81,31 @@ sub run {
     $self->atomic_move(@ops);
 }
 
-# estimates the resources for each sequence name, used for giving resource hints to the job scheduler
+# estimates the resources for each sequence name, used for giving
+# resource hints to the resource manager (which, currently, is Torque)
 sub resource_estimate {
     my ( $self, $batch, $seqname ) = @_;
+
+    my $genomic_file = $self->_seq_file($batch,$seqname);
 
     # get our cdna file if necessary
     my $cdna_size = $self->{cdna_file_size} ||= do {
 	my $cdna_file = $self->_cdna_file;
 	-s $cdna_file
     };
+    my $genomic_size = _cached_file_size( $genomic_file )
+	or die "sanity check failed, no size found for genomic file $genomic_file";
 
-    my $seq_file = $self->_seq_file($batch,$seqname);
-    my $seq_size = -s $seq_file
-	or die "sanity check failed, no size found for seq file $seq_file";
-
-    $_ /= 1_000_000 for $seq_size, $cdna_size;
-
+    my $megs = 2**20;
     my $vmem_est = sprintf('%0.0f',
-			       6 * ( $seq_size + $cdna_size )
-			   +   3 *   $seq_size * $cdna_size
+			   (   200*$megs
+			     + 100*($genomic_size + $cdna_size)
+			     + '1.2e-02' * $genomic_size * $cdna_size
+                           )/$megs
 			  );
-    #print "cdna size: $cdna_size, seq size: $seq_size => vmem $vmem_est M\n";
+    #print "cdna $cdna_size, genomic size: $genomic_size => vmem $vmem_est M\n";
 
-    return
-	{
-	    vmem => $vmem_est, 
-	};
-
+    return { vmem => $vmem_est };
 }
 
 # class method, meant to be run on a cluster node through perl -e
