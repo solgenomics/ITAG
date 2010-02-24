@@ -13,6 +13,7 @@ use CXGN::DB::GFF::Versioned;
 use CXGN::Tools::Class qw/parricide/;
 use CXGN::Tools::Run;
 use CXGN::ITAG::Config;
+use CXGN::ITAG::Tools qw/ parse_release_dirname /;
 
 =head1 NAME
 
@@ -79,9 +80,6 @@ sub new {
     or croak "must specify either 'releasenum' or 'devel' for new()";
   $args{devel} && $args{releasenum}
       and croak "cannot specify 'releasenum' if 'devel' is true";
-  if( $args{releasenum} ) {
-    $args{releasenum} > 0 or croak "'releasenum' must be a positive integer";
-  }
 
   #normalize boolean args
   $args{$_} = !!$args{$_} foreach qw/devel pre/;
@@ -126,31 +124,10 @@ sub find {
     grep $cond_match->($_),
     map $class->new(%$_),
     grep $_,
-    map _parse_release_dirname($_),
+    map parse_release_dirname($_),
     glob(File::Spec->catfile($dirname,'*'));
 
 }
-
-sub _parse_release_dirname {
-  my ($dir) = @_;
-
-  my $bn = basename($dir);
-
-  my %p;
-  @p{'releasenum','devel','pre'} = my @matches = $bn =~ m!^ITAG(\d*)_(devel_)?(pre_)?release$!i or return;
-
-  return unless $p{devel} || $p{releasenum};
-
-  #convert pre and devel to booleans
-  $p{pre}   = !! $p{pre};
-  $p{devel} = !! $p{devel};
-  $p{releasenum} ||= 0;
-  $p{dir} = $dir;
-  $p{basename} = $bn;
-
-  return \%p;
-}
-
 
 =head2 releases_root_dir
 
@@ -384,10 +361,6 @@ sub release_tag {
   if( $self->is_devel_release ) {
     return "ITAG_devel$pre";
   } else {
-
-    $self->{releasenum} && $self->{releasenum} =~ /^\d+$/ && $self->{releasenum} > 0
-      or die "releasenum must be a positive integer, not '$self->{releasenum}'\n";
-
     return "ITAG$self->{releasenum}${pre}";
   }
 }
