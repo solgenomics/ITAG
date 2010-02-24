@@ -20,7 +20,7 @@ my $jobs = parallel_gthxml_to_gff3->new(
     dirs     => \@dirs
 );
 
-$jobs->max_workers( 12 );
+$jobs->max_workers( 7 );
 $jobs->run;
 
 exit;
@@ -61,10 +61,6 @@ has 'outfile'    => ( is => 'ro',
 has 'files_done' => ( is => 'ro',
                       isa => 'HashRef',
                       lazy_build => 1,
-                      traits => ['Hash'],
-                      handles => {
-                          is_done => 'get'
-                         },
                      ); sub _build_files_done {
                          my ( $self ) = @_;
 
@@ -73,10 +69,18 @@ has 'files_done' => ( is => 'ro',
 			 print "indexing donefile ... ";
                          tie my %done, 'DB_File', $self->donefile.'.index', O_CREAT|O_RDWR;
                          my $d = $self->donefile->openr;
-                         $done{ $_ } = 1 while <$d>;
+			 $done{ normalize_filename($_) } = 1 while <$d>;
 			 print "done.\n";
                          return \%done;
                      }
+sub is_done {
+    return  shift->files_done->{ normalize_filename(@_) };
+}
+sub normalize_filename {
+    $_[0] =~ m|/(\d+/\d+\.xml)$|
+	or return;
+    return $1;
+}
 
 #arrayref of dirs we are searching for files
 has 'dirs'  => ( is => 'ro',
@@ -89,7 +93,7 @@ has 'find_handle' => ( is => 'ro',
                        isa => 'FileHandle',
                        lazy_build => 1,
                       ); sub _build_find_handle {
-                          open my $f, "ssh eggplant find ".join(' ',map dir($_)->absolute, @{shift->dirs})." -type f -and -name '*.xml' |";
+                          open my $f, "find ".join(' ',map dir($_)->absolute, @{shift->dirs})." -type f -and -name '*.xml' |";
                           return $f;
                       }
 
@@ -99,7 +103,7 @@ around enqueue => sub {
     my ( $orig, $self, $xml_file ) = @_;
 
     if( $self->is_done( $xml_file ) ) {
-	print "$xml_file skipped\n";
+	#print "$xml_file skipped\n";
         return;
     }
     print "$xml_file queued ...\n";
@@ -115,10 +119,14 @@ around enqueue => sub {
         } else {
             # dump the converted results to our output file
             open my $gff3_fh,'<', "$gff3_out_file";
-            { my $l = File::Flock->new( $self->outfile );
-              my $out_fh = $self->outfile->open('>>');
+	    local $SIG{INT}; #< ignore interrupts
+
+            { my $l; 
+              my $out_fh;
 	      while( <$gff3_fh> ) {
 		  unless( /^##gff-version/ ) {
+		      $l ||= File::Flock->new( $self->outfile );
+		      $out_fh ||= $self->outfile->open('>>');
 		      $out_fh->print($_);
 		  }
 	      }
@@ -130,6 +138,8 @@ around enqueue => sub {
 	    }
         }
     });
+
+    return 1;
 };
 
 sub run {
@@ -141,24 +151,26 @@ sub run {
     # print just one gff3 header in the outfile
     $self->outfile->open('>>')->print("##gff-version 3\n");
 
-    # now queue the first set of jobs
-    for (1 .. $self->max_workers ) {
-        my $xml_file = <$files>;
-        chomp $xml_file;
-        last unless defined $xml_file;
-        $self->enqueue($xml_file);
-    }
+    $self->fill_queue;
+
     POE::Kernel->run;
 }
 
-#sub worker_done    { shift; warn join ' ', @_; }
 sub worker_done {
+    shift->fill_queue if rand() < 0.3;
+}
+
+sub fill_queue {
     my $self = shift;
-    for( 1, 2 ) {
-	if( my $xml_file = $self->find_handle->getline ) {
-            chomp $xml_file;
-	    $self->enqueue( $xml_file );
-	}
+
+    my $queue_max = $self->max_workers*5;
+    my $queue     = $self->Engine->process_queue;
+       
+    while( @$queue < $queue_max ) {
+	my $xml_file = $self->find_handle->getline;
+	last unless $xml_file;
+	chomp $xml_file;
+	redo unless $self->enqueue( $xml_file );
     }
 }
 
