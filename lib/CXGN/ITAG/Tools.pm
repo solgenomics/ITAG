@@ -42,7 +42,6 @@ BEGIN {
 		      parse_kv_file
 		      parse_release_dirname
 		      assemble_release_dirname
-		      assemble_release_filename
 		      assemble_release_tag
 		      find_published_releases
 		     );
@@ -267,7 +266,7 @@ sub parse_release_dirname {
   my $bn = basename($dir);
 
   my %p;
-  @p{'releasenum','devel','pre'} = my @matches = $bn =~ m!^ITAG(\d*)_(devel_)?(pre_)?release$!i or return;
+  @p{'releasenum','devel','pre'} = my @matches = $bn =~ m!^ITAG([^_]*)_(devel_)?(pre_)?release$!i or return;
 
   return unless $p{devel} || $p{releasenum};
 
@@ -326,34 +325,6 @@ sub assemble_release_tag {
     return "ITAG$p->{releasenum}${pre}";
   }
 }
-
-=head2 assemble_release_filename
-
-  Usage: my $fn = assemble_release_filename({ releasenum=>2}, 'foo','gff3')
-         #returns 'ITAG2_foo.gff3'
-  Desc : assemble an ITAG release file name from a hashref
-         like that returned by parse_release_dirname, plus the file's
-         name and type
-  Args : directory name,
-         hashref like that returned by parse_release_dirname() above,
-         file name stem,
-         file type (e.g. 'gff3')
-  Ret  : string directory name without path
-  Side Effects: none
-
-=cut
-
-sub assemble_release_filename {
-  my ($dir,$p,$name,$type) = @_;
-  $name or croak "must pass name to assemble_release_filename()\n";
-  $type or croak "must pass type to assemble_release_filename()\n";
-
-  my $tag = assemble_release_tag($p)
-    or return;
-
-  return File::Spec->catfile($dir,$tag.'_'.$name.'.'.$type);
-}
-
 
 =head2 find_published_releases
 
