@@ -13,6 +13,7 @@ use CXGN::DB::GFF::Versioned;
 use CXGN::ITAG::Release;
 use CXGN::Tools::Script qw/lock_script unlock_script/;
 
+use CXGN::Config;
 use CXGN::IndexedLog;
 
 sub usage {
@@ -65,9 +66,9 @@ foreach my $one_time_release (grep !$_->is_devel_release, @releases) {
 # if they are devel, check the timestamps of the files and do a versioned reload if necessary
 if(my ($devel_release) = grep $_->is_devel_release, @releases) {
   #open our processing log
-    my $conf = CXGN::ITAG::Config->load_locked;
+    my $conf = CXGN::Config->load_locked;
     my $dbh = CXGN::DB::Connection->new({ config => $conf });
-    my $log = CXGN::IndexedLog->open( DB => $dbh, $conf->{'itag_loading_log_table'} );
+    my $log = CXGN::IndexedLog->open( DB => $dbh, 'itag_loading_log' );
 
     my %f = get_fileset($devel_release);
     my $modtime = (stat( $f{genomic_gff3}))[9];
