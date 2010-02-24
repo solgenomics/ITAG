@@ -80,7 +80,7 @@ use CXGN::BioTools::AGP qw/agp_parse/;
 
 use CXGN::Tools::Identifiers qw/ parse_identifier identifier_namespace /;
 use CXGN::Tools::List qw/str_in max distinct flatten/;
-use CXGN::Page::FormattingHelpers qw/commify_number/;
+use CXGN::Tools::Text qw/commify_number/;
 
 ### parse and validate command line args
 our %opt;
