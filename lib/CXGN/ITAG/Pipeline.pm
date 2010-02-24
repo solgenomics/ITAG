@@ -12,8 +12,6 @@ use File::Path;
 use CXGN::Tools::List qw/all str_in/;
 use CXGN::Tools::Run;
 
-use CXGN::ITAG::Config;
-
 use CXGN::ITAG::Pipeline::Analysis;
 use CXGN::ITAG::Pipeline::Batch;
 
@@ -29,7 +27,7 @@ at a specific version
 =head1 SYNOPSIS
 
   #open an existing pipeline at version 2.  dies if it doesn't exist
-  my $pipe = CXGN::ITAG::Pipeline->open(version => 2);
+  my $pipe = CXGN::ITAG::Pipeline->open(version => 2, basedir => '/foo/bar');
 
   #list the analyses that are present in there
   my @as = $pipe->list_analyses;
@@ -62,17 +60,16 @@ none yet
 
 =head2 open
 
-  Usage: my $pipe = CXGN::ITAG::Pipeline->open(version => 1,
-                                               basedir => $basedir,
-                                              );
+  Usage: my $pipe = CXGN::ITAG::Pipeline->open(
+                        version => 1,
+                        basedir => $basedir,
+                    );
   Desc : get an object representing the state of the ITAG pipeline
          at a specific version, using the files in the given base dir
-  Args : optional hash-style list of one or more parameters that
-         differ from the defaults.  The params and defaults are:
-           version  =>  most recent version (highest version number),
-           basedir  =>  value of itag_pipeline_base in CXGN configuration
-  Ret  : a new object representing the pipeline files at the given
-         version and basepath
+  Args :   basedir  => base directory to search for itag pipelines
+           version  => optional version number, defaults to highest
+                       available
+  Ret  : a new pipeline object
 
 =cut
 
@@ -96,18 +93,14 @@ sub open {
   return $self;
 }
 
-memoize('_default_base');
-sub _default_base {
-  CXGN::ITAG::Config->load->{'itag_pipeline_base'};
-}
-
 #given ref to arg hash, set defaults in the arg hash if they're not
 #already there
 sub _common_new {
   my ($class,$fields) = @_;
 
   #set defaults
-  $fields->{basedir} ||= _default_base();
+  $fields->{basedir}
+      or croak 'must supply basedir argument to CXGN::
   $fields->{version} = _most_recent_pipeline_version($fields->{basedir}) unless defined $fields->{version};
 
   #validate
