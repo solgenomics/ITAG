@@ -348,6 +348,13 @@ exit 0;
 
 ######################## SUBROUTINES ##################
 
+# REMOVEME
+sub munge_identifiers {
+    my ($str) = @_;
+    $str =~ s/\bscaffold(?=\d)/SL1.00sc/g;
+    return $str;
+}
+
 # make sure a given dumpspec is valid
 sub validate_dumpspec {
   my ($a,$gen_fh,$d) = @_;
@@ -776,6 +783,7 @@ sub postprocess_gff3 {
   my @other_pragmas;
   while ( my $line = <$sg> ) {
     chomp $line;
+    $line = munge_identifiers($line) #< REMOVEME
      if ( $line =~ /##\s*(.+)$/ ) {
       #it's a directive
       my $directive = $1;
@@ -1100,12 +1108,12 @@ language = en
 
 # a footer
 # Various places where you can insert your own HTML -- see configuration docs
-html1 = 
-html2 = 
-html3 = 
+html1 =
+html2 =
+html3 =
 html4 =
 #html4 = <div style="border: 1px solid red; padding: 4px"><b>Troubleshooting tip:</b> if the browser seems to be acting strangely, try hitting the <a class="reset_button" href="?reset=1"><b>[Reset]</b></a> link.</div>
-html5 = 
+html5 =
 html6 =
 
 ### defaults examples sub, works for any of them
@@ -1490,7 +1498,8 @@ sub copy_or_die {
   open my $in, $file or die "$! reading $file";
   eval {
     while(my $line = <$in> ){
-      $fh->print($line);
+        $line = munge_identifiers( $line ); #< REMOVEME
+        $fh->print($line);
     }
   }; if($EVAL_ERROR) {
     confess "($file,$fh): $EVAL_ERROR";
