@@ -82,6 +82,9 @@ use CXGN::Tools::Identifiers qw/ parse_identifier identifier_namespace /;
 use CXGN::Tools::List qw/str_in max distinct flatten/;
 use CXGN::Tools::Text qw/commify_number/;
 
+use CXGN::DB::Connection;
+my $dbh = CXGN::DB::Connection->new;
+
 ### parse and validate command line args
 our %opt;
 getopts('d:p:b:PDG',\%opt) or pod2usage(1);
@@ -107,7 +110,7 @@ my $build_directory = $release->dir;
 
 # if -G was passed, we just write the gbrowse configs and exit
 if( $opt{G} ) {
-  print STDERR "writing GBrowse configs and exiting.\n";
+  print "writing GBrowse configs and exiting.\n";
   write_gbrowse_genomic( $release, 'verbose' );
   write_gbrowse_prot(    $release, 'verbose' );
   exit;
@@ -136,22 +139,7 @@ my $pipe = CXGN::ITAG::Pipeline->open( basedir => $opt{d},
 #first, figure out which batch number we're including
 my @batchnums = $pipe->list_batches; #< list all batches
 if( $opt{b} ) { #< if we got a -b option, parse it and use it to restrict the list
-  @batchnums = restrict_batch_numbers($opt{b},@batchnums);
-}
-
-sub restrict_batch_numbers {
-  my ($bspec,@batchnums) = @_;
-  my $max_batch = 0+(sort {$a <=> $b} @batchnums)[-1];
-  my $san_bspec = $bspec;
-  $san_bspec =~ s/[^\d\-,]//g; #< sanitize the batches spec so that people can't pass in arbitrary code
-  $san_bspec =~ s/-/../g; #< convert ranges to perl array slice syntax
-
-  my @expanded_bspec = eval "(0..$max_batch)[$bspec]";
-  die "invalid batch range '$bspec'" if $EVAL_ERROR;
-  my %bn_lookup = map {$_+0 => 1} @batchnums;
-  my @new_batches = sort {$a <=> $b} grep $bn_lookup{$_}, @expanded_bspec;
-  print STDERR "restricting to batch list: ".join(',',@new_batches)."\n";
-  return @new_batches;
+  @batchnums = restrict_batch_numbers( $opt{b}, @batchnums );
 }
 
 # convenient hash of all the analysis objects
@@ -178,95 +166,15 @@ foreach (@required_analyses) {
 }
 
 #get a list of the contigs we'll be using, including their batch numbers
-my $latest_contigs = list_latest_contigs($pipe,%a);
+my $latest_seqs = list_latest_seqs($pipe,%a);
+print "releasing annotations for ".@$latest_seqs." sequences\n";
 
-#this function iterates over one of the above data structures
-sub foreach_contig(&$) {
-  my ($block,$latest_contigs) = @_;
-
-  no strict 'refs';
-  local *{caller()."::chr"} = \my $chr;
-  local *{caller()."::ctg"} = \my $ctg;
-
-  # for each chromosome in numeric order
-  foreach (sort {$a<=>$b} keys %$latest_contigs) {
-    $chr = $_;
-    # each contig in numeric order
-    foreach ( sort { $a->{ctg_num} <=> $b->{ctg_num} } values %{$latest_contigs->{$chr}{contigs}} ) {
-      $ctg = $_;
-      $block->();
-    }
-  }
-}
-
-# this function is self-explanatory
-sub copy_or_die {
-  my ($file,$fh) = @_;
-  open my $in, $file or die "$! reading $file";
-  eval {
-    while(my $line = <$in> ){
-      $fh->print($line);
-    }
-  }; if($EVAL_ERROR) {
-    confess "($file,$fh): $EVAL_ERROR";
-  }
-  close $in;
-}
-
-#same as above, except do a little munging on the gff3
-sub copy_gff3_or_die {
-  my ($aname,$sub,$file,@fh) = @_;
-  open my $in, $file or die "$! reading $file";
-  #sub check { my $l = shift; return unless $l =~ /\S/; chomp $l;  my @f = split /\s+/,$l,9; @f == 9 or $l =~ /^#/ or confess "'$l' not valid gff3";};
-  if( $sub ) {
-    while(<$in>) {
-      #change the source column to be ITAG_ plus the analysis name
-      my $result = $sub->($_);
-      $result =~ s/^\s*(\S+)\t\S+/$1\tITAG_$aname/;
-      #check($result);
-      for my $fh (@fh) {
-	$fh->print( $result );
-      }
-    }
-  } else {
-    while(my $line = <$in>) {
-      #change the source column to be ITAG_ plus the analysis name
-      $line =~ s/^\s*(\S+)\t\S+/$1\tITAG_$aname/;
-      #check($line);
-      for my $fh (@fh) {
-	$fh->print( $line );
-      }
-    }
-  }
-  close $in;
-}
-
-# couple of functions for aggregating and reporting concisely what files are not available
-sub warn_not_available_summary {
-  our %not_available;
-  my @alist = grep !/^_/, keys %not_available
-    or return;
-  my $alist = do {
-    my $l = pop @alist;
-    @alist ? 'analyses '.join(', ', @alist, "and $l") : "analysis $l";
-  };
-  warn "WARNING: ".$not_available{_global}." files not available from $alist.  Results will be incomplete\n";
-}
-sub report_file_not_available {
-  my ($seq_rec,$a_rec,$file) = @_;
-  our %not_available;
-  push @{ $not_available{ $a_rec->{name} }{ $seq_rec->{batch} } },$file;
-  $not_available{_global}++;
-}
-
-foreach_contig {
+foreach my $ctg (@$latest_seqs) {
   #check that all the files we need are readable
-  our $ctg;
-  #print Dumper $ctg;
   -r or die "$_ file not readable\n" foreach ( $a{renaming}->{obj}->files_for_seq( $ctg->{batch}, $ctg->{name} ),
 					       $a{seq}->{obj}->files_for_seq(    $ctg->{batch}, $ctg->{name} ),
 					     );
-} $latest_contigs;
+}
 
 ###### MAKE OUTPUT DIRECTORY AND OPEN OUTPUT FILES
 
@@ -282,17 +190,17 @@ my $gen_fh    = open_data_files( $gen_files );
 #put the header and feature-ontology in all the gff3 files
 my $sofa_url = $pipe->feature_ontology_url;
 my $official_gff3_source_name = 'ITAG';
+
 #TODO: check that the sofa URL is still accessible
 $gen_fh->{$_}->print( "##gff-version 3\n##feature-ontology $sofa_url\n" )
   foreach grep $gen_files->{$_}->{type} eq 'gff3', keys %{$gen_fh};
 
-foreach_contig {
-  our $ctg;
+foreach my $ctg (@$latest_seqs) {
   my $ctg_name = $ctg->{name};
 
   #get the names of all the files we need
   my (undef,$eug_prot,$eug_cds,$eug_cdna) = $a{renaming}->{obj}->files_for_seq( $ctg->{batch}, $ctg->{name} );
-  my ($seq,$ctg_agp)                           = $a{seq}->{obj}->files_for_seq(    $ctg->{batch}, $ctg->{name} );
+  my ($seq,$ctg_agp)                      =      $a{seq}->{obj}->files_for_seq( $ctg->{batch}, $ctg->{name} );
 
   copy_or_die( $seq,      $gen_fh->{genomic_fasta} );
   copy_or_die( $eug_cds,  $gen_fh->{cds_fasta}     );
@@ -300,9 +208,11 @@ foreach_contig {
 
   # using this sequence's AGP file, make the sol -> gb ID mapping
   # file, and write some sequence-region lines
-  process_agp( $ctg_name, $ctg_agp, $gen_fh );
+  if( identifier_namespace( $ctg_name ) eq 'tomato_bac_contig' ) {
+      process_agp( $ctg_name, $ctg_agp, $gen_fh );
+  }
 
-  # fetch our human_readable_description if available, and 
+  # fetch our human_readable_description if available
   my $human_readable_descriptions = {};
   my ( $prot_w_desc ) = $a{human_readable_description}->{obj}->files_for_seq( $ctg->{batch}, $ctg->{name} );
   if( -f $prot_w_desc ) {
@@ -408,7 +318,7 @@ foreach_contig {
     }
   }
 
-} $latest_contigs;
+}
 
 #close all the data files
 close_all( $gen_fh );
@@ -436,7 +346,7 @@ update_itag_current_link($target_path);
 #and exit
 exit 0;
 
-############# SUBROUTINES #####
+######################## SUBROUTINES ##################
 
 # make sure a given dumpspec is valid
 sub validate_dumpspec {
@@ -505,23 +415,22 @@ sub process_agp {
     #     }
 
     #transform identifiers if necessary
-    if ( identifier_namespace( $line->{ident} ) eq 'genbank_accession' ) {
+    my $ident_namespace = identifier_namespace( $line->{ident} ) || '';
+    if ( $ident_namespace eq 'genbank_accession' ) {
       #if it's a sol-style bac sequence ident, look up its genbank name
-      if (my $solid = genbank_acc_to_seq_name( $line->{ident} ) ) {
+      if (my $solid = genbank_acc_to_seq_name( $line->{ident}, $dbh ) ) {
 	warn "$ctg_name spec: translating genbank accession $line->{ident} to $solid\n";
 	$gen_fh->{sol_gb_mapping}->print( "$solid\t$line->{ident}\n" );
 	$line->{ident} = $solid;
       } else {
 	die "could not find SOL ID for genbank accession '$line->{ident}'!\n";
       }
-    } elsif ( identifier_namespace($line->{ident}), 'bac_sequence' ) {
-      if (my $gbacc = seq_name_to_genbank_acc( $line->{ident} ) ) {
+    } elsif ( $ident_namespace eq 'bac_sequence' ) {
+      if (my $gbacc = seq_name_to_genbank_acc( $line->{ident}, $dbh ) ) {
 	$gen_fh->{sol_gb_mapping}->print( "$line->{ident}\t$gbacc\n" );
       } else {
 	$gen_fh->{sol_gb_mapping}->print( "$line->{ident} NO_ACCESSION_REGISTERED\n" );
       }
-    } else {
-      die "In contig spec for $ctg_name, I don't know how to deal with the sequence identifier '$line->{ident}'";
     }
 
     #push this info onto the contig's member listing
@@ -529,8 +438,19 @@ sub process_agp {
     #push @ctg_tab_spec_gb,
 
     #and write out a GFF3 line for this component in the assembly
-    $_->print( join("\t",$ctg_name,$official_gff3_source_name,'clone',$line->{ostart},$line->{oend},qw/. + ./,"Name=$line->{ident};Target=$line->{ident} $line->{cstart} $line->{cend} +")."\n###\n" )
-      foreach @{$gen_fh}{qw/contig_gff3 combi_genomic_gff3/};
+    foreach ( @{$gen_fh}{qw/contig_gff3 combi_genomic_gff3/} ) {
+        $_->print( join("\t",
+                        $ctg_name,
+                        $official_gff3_source_name,
+                        'clone',
+                        $line->{ostart},
+                        $line->{oend},
+                        qw/. + ./,
+                        "Name=$line->{ident};Target=$line->{ident} $line->{cstart} $line->{cend} +"
+                       )
+                   ."\n###\n" )
+    }
+
   }
   #print the member listing for this contig
   $gen_fh->{contig_members_sol}->print( join("\t",@ctg_tab_spec_sol),"\n" );
@@ -630,6 +550,9 @@ sub optionally_add_human_readable_attr_to_gene_model_gff3_line {
 # description line, return a hashref of { gene_name => 'desc string', ... }
 sub extract_human_readable_desc_strings {
   my ( $prot_w_desc ) = @_;
+
+  return {} unless -s $prot_w_desc > 3;
+
   my %descriptions;
   open my $fa, '<', $prot_w_desc or die "$! reading file '$prot_w_desc'";
   while( my $l = <$fa> ) {
@@ -717,9 +640,8 @@ sub collect_stats {
 	$stats{gene_cnt}++
       } elsif( $type eq 'mRNA' ) {
 	$stats{gene_model_cnt}++;
+        $stats{gene_mrna_counts}{$feature->get_Annotations('Parent')->value}++;
       }
-
-      #TODO: detect splice variants and calculate splice variants count and pct
     }
     elsif( $src =~ /^itag_transcripts_/i ) {
       if( $type eq 'match' ) {
@@ -732,6 +654,11 @@ sub collect_stats {
       }
     }
   }
+
+  ## aggregate the splice variant statistics
+  my $variants = delete $stats{gene_mrna_counts};
+  # currently just counting how many genes have been annotated with splice variants
+  $stats{genes_with_splice_variants} = scalar grep $_ > 1, values %$variants;
 
   undef $combi_in; #< close it
 
@@ -888,26 +815,28 @@ sub postprocess_gff3 {
   close $orig;
 }
 
-sub clear_uniq_ids() {
-  our %id_ctr = ();
-}
-sub uniq_id {
-  our %id_ctr;
-  my $id = shift;
-  my $cnt = $id_ctr{$id}++;
-  if($cnt) {
-    return "$id-i$cnt";
-  }
-  return $id;
-}
-sub last_uniq_id {
-  our %id_ctr;
-  my $id = shift;
-  my $cnt = $id_ctr{$id}-1;
-  if($cnt > 0) {
-    return "$id-i$cnt";
-  }
-  return $id;
+{
+    my %id_ctr;
+    sub clear_uniq_ids() {
+        %id_ctr = ();
+    }
+    sub uniq_id {
+        my $id = shift;
+        my $cnt = $id_ctr{$id}++;
+        if ($cnt) {
+            return "$id-i$cnt";
+        }
+        return $id;
+    }
+    sub last_uniq_id {
+        my $id = shift;
+        no warnings 'uninitialized';
+        my $cnt = $id_ctr{$id}-1;
+        if ($cnt > 0) {
+            return "$id-i$cnt";
+        }
+        return $id;
+    }
 }
 
 #given a line of text containing a gene description somewhere, parse
@@ -945,7 +874,7 @@ sub format_deflines {
     my ($contigname, $evidence_code, $coords, $timestamp ) = split /\s+/, $s->desc
       or die "could not parse description for ".$s->display_id.": (".$s->desc.")";
 
-    $s->desc( "contig:$contigname evidence_code:$evidence_code gene_region:$coords"
+    $s->desc( "genomic_reference:$contigname evidence_code:$evidence_code gene_region:$coords"
 	      .($desc ? " functional_description:$desc" : '')
 	    );
 
@@ -965,6 +894,7 @@ sub write_readme {
   $stats ||= {};
   my %fmt_stats = %$stats;
   $_ = commify_number($_ || 0) foreach values %fmt_stats;
+  $fmt_stats{genes_with_splice_variants} ||= 'no';
   lock_hash(%fmt_stats);
 
   my $file_descriptions = file_descriptions($release,$gen_files);
@@ -994,7 +924,7 @@ $release_tag $organism Genome release
 
 The $project_name project ($project_acronym) is pleased to announce the release of the latest version of the official $organism genome annotation ($release_tag).  This release was generated on $date_str.
 
-The $release_tag release contains $fmt_stats{gene_cnt} genes in all, with $fmt_stats{gene_model_cnt} gene models. Currently, no genes have annotated splice variants.  Approximately $fmt_stats{genome_coverage_pct}% of the euchromatic $organism genome is covered by the current $project_acronym annotation.
+The $release_tag release contains $fmt_stats{gene_cnt} genes in all, with $fmt_stats{gene_model_cnt} gene models. Currently, $fmt_stats{genes_with_splice_variants} genes have annotated splice variants.  Approximately $fmt_stats{genome_coverage_pct}% of the euchromatic $organism genome is covered by the current $project_acronym annotation.
 
 This $project_acronym release has $fmt_stats{mapped_ests_cnt} cDNA and EST sequences mapped to the genome, resulting in $fmt_stats{protein_coding_with_cdna_or_est_cnt} protein coding genes derived at least partly from supporting cDNA and/or EST alignments and thus $fmt_stats{protein_coding_without_cdna_or_est_cnt} protein coding genes not utilizing transcript support.  With respect to protein homology, $fmt_stats{protein_coding_with_prot_cnt} gene models used homology to known proteins in their construction, while $fmt_stats{protein_coding_without_prot_cnt} did not.
 
@@ -1070,18 +1000,14 @@ sub wrap_long_lines {
   return $text;
 }
 
-# return a hashref like
-# { chromosome number => { chr_version => num,
-#                          contigs => { seq name => {num => ctg num, batchnum => batch number, batch => batch obj},
-#                                     }
-#
-#                        },
-#   ...
-# }
-sub list_latest_contigs {
+# return a arrayref like
+# [ { seq name => {num => ctg num, batchnum => batch number, batch => batch obj},
+#    ...
+# ]
+sub list_latest_seqs {
   my ($pipe,%an) = @_;
 
-  my %latest_contigs;
+  my @seqs;
 
  BATCH:
   foreach my $bn (@batchnums) {
@@ -1102,33 +1028,14 @@ sub list_latest_contigs {
       next BATCH;
     }
 
-    #now assemble the %latest_contigs structure showing all the most recent contigs that we have
-    foreach my $seqname ( $batch->seqlist ) {
-      my $p = parse_identifier($seqname, 'tomato_contig')
-	or next;
-
-      my $chr = $p->{chr};
-      my $chr_ver = $p->{chr_ver};
-      if ( ! $latest_contigs{$chr} || $latest_contigs{$chr}->{version} < $chr_ver ) {
-	# if we've come upon a new chromosome or a new version of a
-	# chromosome we already have, replace it
-
-	$latest_contigs{$chr} = { ver      => $chr_ver,
-				  contigs  => { $seqname => { name => $seqname, batch => $batch, batchnum => $bn, %$p }},
-				};
-      } elsif ( $latest_contigs{$chr}{ver} == $chr_ver ) {
-	# otherwise, we are in the most recent chromosome version we
-	# know about so far, so keep processing it
-
-	my $contigs = $latest_contigs{$chr}{contigs};
-	if( !$contigs->{seqname} || $contigs->{$seqname}->{batchnum} < $bn ) {
-	  $contigs->{$seqname} = { name => $seqname,  batch => $batch, batchnum => $bn, %$p };
-	}
-      }
+    foreach ( $batch->seqlist ) {
+        push @seqs, { batch => $batch, name => $_ };
     }
   }
 
-  return \%latest_contigs;
+  return [ sort { $a->{name} cmp $b->{name} }
+           @seqs
+         ];
 }
 
 
@@ -1229,7 +1136,7 @@ sub write_gbrowse_genomic {
   my $protconf = $release->get_file_info("gbrowse_protein_conf")->{file};
   my $prot_link_base = "/gbrowse/gbrowse/".basename($protconf,'.conf');
 
-  print STDERR "writing $type conf to ' $file '\n" if $verbose;
+  print "writing $type conf to ' $file '\n" if $verbose;
 
   my $releasenum = $release->release_number;
   my $is_devel = $release->is_devel_release ? 1 : 0;
@@ -1458,7 +1365,7 @@ sub write_gbrowse_prot {
 
   my $file = $release->get_file_info(lc "gbrowse_${type}_conf")->{file};
 
-  print STDERR "writing $type conf to ' $file '\n" if $verbose;
+  print "writing $type conf to ' $file '\n" if $verbose;
 
   my $releasenum = $release->release_number;
   my $is_devel = $release->is_devel_release ? 1 : 0;
@@ -1559,3 +1466,79 @@ citation     = Protein domain matches found by RPS-BLAST (see <a href="http://ww
   close $f;
 }
 
+
+sub restrict_batch_numbers {
+  my ($bspec,@batchnums) = @_;
+  my $max_batch = 0+(sort {$a <=> $b} @batchnums)[-1];
+  my $san_bspec = $bspec;
+  $san_bspec =~ s/[^\d\-,]//g; #< sanitize the batches spec so that people can't pass in arbitrary code
+  $san_bspec =~ s/-/../g; #< convert ranges to perl array slice syntax
+
+  my @expanded_bspec = eval "(0..$max_batch)[$bspec]";
+  die "invalid batch range '$bspec'" if $EVAL_ERROR;
+  my %bn_lookup = map {$_+0 => 1} @batchnums;
+  my @new_batches = sort {$a <=> $b} grep $bn_lookup{$_}, @expanded_bspec;
+  print "restricting to batch list: ".join(',',@new_batches)."\n";
+  return @new_batches;
+}
+
+
+# this function is self-explanatory
+sub copy_or_die {
+  my ($file,$fh) = @_;
+  open my $in, $file or die "$! reading $file";
+  eval {
+    while(my $line = <$in> ){
+      $fh->print($line);
+    }
+  }; if($EVAL_ERROR) {
+    confess "($file,$fh): $EVAL_ERROR";
+  }
+  close $in;
+}
+
+#same as above, except do a little munging on the gff3
+sub copy_gff3_or_die {
+  my ($aname,$sub,$file,@fh) = @_;
+  open my $in, $file or die "$! reading $file";
+  #sub check { my $l = shift; return unless $l =~ /\S/; chomp $l;  my @f = split /\s+/,$l,9; @f == 9 or $l =~ /^#/ or confess "'$l' not valid gff3";};
+  if( $sub ) {
+    while(<$in>) {
+      #change the source column to be ITAG_ plus the analysis name
+      my $result = $sub->($_);
+      $result =~ s/^\s*(\S+)\t\S+/$1\tITAG_$aname/;
+      #check($result);
+      for my $fh (@fh) {
+	$fh->print( $result );
+      }
+    }
+  } else {
+    while(my $line = <$in>) {
+      #change the source column to be ITAG_ plus the analysis name
+      $line =~ s/^\s*(\S+)\t\S+/$1\tITAG_$aname/;
+      #check($line);
+      for my $fh (@fh) {
+	$fh->print( $line );
+      }
+    }
+  }
+  close $in;
+}
+
+# couple of functions for aggregating and reporting concisely what files are not available
+sub warn_not_available_summary {
+  our %not_available;
+  my @alist = grep !/^_/, keys %not_available
+    or return;
+  my $alist = do {
+    my $l = pop @alist;
+    @alist ? 'analyses '.join(', ', @alist, "and $l") : "analysis $l";
+  };
+  warn "WARNING: ".$not_available{_global}." files not available from $alist.  Results will be incomplete\n";
+}
+sub report_file_not_available {
+  my ($seq_rec,$a_rec,$file) = @_;
+  our %not_available;
+  push @{ $not_available{ $a_rec->{name} }{ $seq_rec->{batch} } },$file;
+  $not_available{_global}++;
+}
