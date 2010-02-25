@@ -613,6 +613,7 @@ sub collect_stats {
   my %stats = map {$_=>''} qw(
 			      gene_cnt
 			      gene_model_cnt
+			      gene_mrna_counts
 			      genes_with_splice_variants_pct
 			      genes_with_splice_variants_cnt
 			      genome_coverage_pct
