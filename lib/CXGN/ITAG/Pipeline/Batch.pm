@@ -124,7 +124,7 @@ sub create {
 	map { $_=>1 } #< turn it into a hash
 	map { #< add the member seqs of any tomato contigs
 	  my $seqname = $_;
-	  if( $args{no_bacs_in_contigs} && identifier_namespace($seqname) eq 'tomato_contig' ) {
+	  if( $args{no_bacs_in_contigs} && identifier_namespace($seqname) eq 'tomato_bac_contig' ) {
 	    our %all_contigs;
 	    %all_contigs = map {named_contigs($_, include_old => 1)} 1..12 unless %all_contigs;
 	    my $rec = $all_contigs{$seqname} || die "contig '$seqname' not found in any AGP files!";
