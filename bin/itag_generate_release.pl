@@ -654,7 +654,7 @@ sub update_itag_current_link {
   my @releases = CXGN::ITAG::Release->find;
 
   #if there is an official release, always use that as current
-  my ($curr_rel) = grep !$_->is_devel_release && !_->is_pre_release, @releases;
+  my ($curr_rel) = grep !$_->is_devel_release && !$_->is_pre_release, @releases;
   #otherwise, just use the most recent devel or pre release
   $curr_rel ||= $releases[0];
 
