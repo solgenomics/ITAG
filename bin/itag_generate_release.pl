@@ -190,7 +190,7 @@ exit 0;
 # REMOVEME
 sub munge_identifiers {
     my ($str) = @_;
-    $str =~ s/(?<=[^a-z\d])scaffold(?=\d)/SL1.00sc/gi;
+    $str =~ s/scaffold(?=\d)/SL1.00sc/gi;
     return $str;
 }
 
