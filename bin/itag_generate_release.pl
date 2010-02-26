@@ -106,7 +106,6 @@ my $release = CXGN::ITAG::Release->new( releasenum => $release_num,
 					pre   => $opt{P},
 					devel => $opt{D},
 				      );
-my $build_directory = $release->dir;
 
 # if -G was passed, we just write the gbrowse configs and exit
 if( $opt{G} ) {
@@ -114,18 +113,6 @@ if( $opt{G} ) {
   write_gbrowse_genomic( $release, 'verbose' );
   write_gbrowse_prot(    $release, 'verbose' );
   exit;
-}
-
-# move build directory to <build>.prev if present, and delete any old .prev
-if(-d $build_directory ) {
-  if( $opt{D} ) {
-    system "rm -rf $build_directory.prev";
-    die if $CHILD_ERROR;
-    system "mv $build_directory $build_directory.prev";
-    die if $CHILD_ERROR;
-  } else {
-    die "$build_directory already exists.  I won't overwrite it!\n";
-  }
 }
 
 # now open our ITAG pipeline, at the right version and base directory
@@ -166,7 +153,7 @@ foreach (@required_analyses) {
 }
 
 #get a list of the contigs we'll be using, including their batch numbers
-my $latest_seqs = list_latest_seqs($pipe,%a);
+my $latest_seqs = list_latest_seqs( $pipe, \@batchnums, \%a );
 print "releasing annotations for ".@$latest_seqs." sequences\n";
 
 foreach my $ctg (@$latest_seqs) {
@@ -178,156 +165,9 @@ foreach my $ctg (@$latest_seqs) {
 
 ###### MAKE OUTPUT DIRECTORY AND OPEN OUTPUT FILES
 
-$release->mkdir();
--d $build_directory or die "$! creating build directory $build_directory\n";
--w $build_directory or die "build directory $build_directory is not writable\n";
-
 my $gen_files = $release->get_all_files;
-my $gen_fh    = open_data_files( $gen_files );
 
-######## FOR EACH CONTIG, WRITE THE APPROPRIATE LINES TO THE OUTPUT FILES
-
-#put the header and feature-ontology in all the gff3 files
-my $sofa_url = $pipe->feature_ontology_url;
-my $official_gff3_source_name = 'ITAG';
-
-#TODO: check that the sofa URL is still accessible
-$gen_fh->{$_}->print( "##gff-version 3\n##feature-ontology $sofa_url\n" )
-  foreach grep $gen_files->{$_}->{type} eq 'gff3', keys %{$gen_fh};
-
-foreach my $ctg (@$latest_seqs) {
-  my $ctg_name = $ctg->{name};
-
-  #get the names of all the files we need
-  my (undef,$eug_prot,$eug_cds,$eug_cdna) = $a{renaming}->{obj}->files_for_seq( $ctg->{batch}, $ctg->{name} );
-  my ($seq,$ctg_agp)                      =      $a{seq}->{obj}->files_for_seq( $ctg->{batch}, $ctg->{name} );
-
-  copy_or_die( $seq,      $gen_fh->{genomic_fasta} );
-  copy_or_die( $eug_cds,  $gen_fh->{cds_fasta}     );
-  copy_or_die( $eug_cdna, $gen_fh->{cdna_fasta}    );
-
-  # using this sequence's AGP file, make the sol -> gb ID mapping
-  # file, and write some sequence-region lines
-  if( identifier_namespace( $ctg_name ) eq 'tomato_bac_contig' ) {
-      process_agp( $ctg_name, $ctg_agp, $gen_fh );
-  }
-
-  # fetch our human_readable_description if available
-  my $human_readable_descriptions = {};
-  my ( $prot_w_desc ) = $a{human_readable_description}->{obj}->files_for_seq( $ctg->{batch}, $ctg->{name} );
-  if( -f $prot_w_desc ) {
-    $human_readable_descriptions = extract_human_readable_desc_strings( $prot_w_desc );
-    format_deflines( $eug_prot, $human_readable_descriptions, $gen_fh->{protein_fasta} );
-  } else {
-    copy_or_die( $eug_prot, $gen_fh->{protein_fasta} );
-  }
-
-  # gff3-escape all the description strings (if any)
-  $_ = gff3_escape( $_ )
-    for values %$human_readable_descriptions;
-
-  # make a closure over this contig's human readable descriptions that
-  # will insert them into each relevant gff3 line.  this is used for
-  # processing the 'renaming' GFF3 below
-  my $add_human_readable_gff3_elements = sub {
-    optionally_add_human_readable_attr_to_gene_model_gff3_line( shift, $human_readable_descriptions )
-  };
-
-  my @gff3_dump_specs =
-     (
-      { analyses => 'renaming',
-	gff3_output_spec_index => 0,
-	release_files => [qw| combi_genomic_gff3  models_gff3 |],
-	alter_lines_with => $add_human_readable_gff3_elements,
-	errors_fatal => 1,
-      },
-      { analyses => [qw[ geneid_tomato
-			 genemark_ath
-			 genemark_tom
-			 glimmerhmm_ath
-			 glimmerhmm_tomato
-			 augustus
-		       ]
-		    ],
-	gff3_output_spec_index => 0,
-	release_files => [qw| combi_genomic_gff3 genefinders_gff3 |],
-      },
-      { analyses => 'trnascanse',
-	gff3_output_spec_index => 1,
-	release_files => [qw| combi_genomic_gff3 genefinders_gff3 |],
-      },
-      { analyses => [qw[
-			 sgn_markers
-			 sgn_loci
-		       ]
-		    ],
-	gff3_output_spec_index => 1,
-	release_files => [qw| combi_genomic_gff3 sgn_data_gff3 |],
-      },
-      { analyses => 'sgn_unigenes',
-	gff3_output_spec_index => 1,
-	release_files => [qw| combi_genomic_gff3 cdna_algn_gff3 sgn_data_gff3|],
-      },
-      { analyses => 'infernal',
-	gff3_output_spec_index => 0,
-	release_files => 'combi_genomic_gff3',
-      },
-      { analyses => qr/^transcripts_/i,
-	gff3_output_spec_index => 0,
-	release_files => [qw| combi_genomic_gff3 cdna_algn_gff3 |],
-      },
-      { analyses => qr/^blastp_/i,
-	gff3_output_spec_index => 1,
-	release_files => 'functional_prot_gff3',
-	alter_lines_with => \&fix_blastp_gff3,
-      },
-      { analyses => 'interpro',
-	gff3_output_spec_index => 0,
-	alter_lines_with => \&fix_interpro_gff3,
-	release_files => 'functional_prot_gff3',
-      },
-      { analyses => 'rpsblast',
-	gff3_output_spec_index => 0,
-	alter_lines_with => \&rpsblast_m8_to_gff3,
-	release_files => 'functional_prot_gff3',
-      },
-     );
-
-  # validate the above dumpspecs so we aren't surprised later with
-  # errors after we have already been dumping for a while
-  validate_dumpspec(\%a,$gen_fh,$_) for @gff3_dump_specs;
-
-  # now do all the actual dumping, since we are now reasonably certain
-  # that it will succeed
-  foreach my $dump (@gff3_dump_specs) {
-    foreach my $arecord ( find_analyses( \%a, $dump->{analyses} ) ) {
-
-
-      my $index = $dump->{gff3_output_spec_index};
-      my @filehandles = @{$gen_fh}{flatten $dump->{release_files}};
-
-      my $sub = $dump->{alter_lines_with};
-
-      my $file = ($arecord->{obj}->files_for_seq($ctg->{batch},$ctg->{name}))[$index];
-      #print STDERR "dumping $arecord->{name}:$file to ".join(' ',flatten $dump->{release_files})."\n";
-      unless( $dump->{errors_fatal} || -f $file ){
-	report_file_not_available( $ctg, $arecord, $file );
-      } else {
-	copy_gff3_or_die( $arecord->{name}, $sub, $file, @filehandles);
-      }
-    }
-  }
-
-}
-
-#close all the data files
-close_all( $gen_fh );
-
-warn_not_available_summary();
-
-#now post-process all the GFF3 files in place to clean them up, sort them, add sync marks, etc.
-postprocess_gff3(  $gen_files->{$_->{seq_type}.'_fasta'}->{file},  $_->{file}  )
-  foreach grep $_->{type} eq 'gff3', values %$gen_files ;
+dump_data( $release, $gen_files );
 
 #now collect statistics about this release to use in the README file
 my $stats = collect_stats($gen_files);
@@ -347,12 +187,177 @@ update_itag_current_link($target_path);
 exit 0;
 
 ######################## SUBROUTINES ##################
-
 # REMOVEME
 sub munge_identifiers {
     my ($str) = @_;
-    $str =~ s/\bscaffold(?=\d)/SL1.00sc/g;
+    $str =~ s/(?<=[^a-z\d])scaffold(?=\d)/SL1.00sc/gi;
     return $str;
+}
+
+# for each contig, write the appropriate lines to the output files
+sub dump_data {
+    my ( $release, $gen_files ) = @_;
+
+    # move build directory to <build>.prev if present, and delete any old .prev
+    if(-d $release->dir ) {
+        my $d = $release->dir;
+
+        if( $opt{D} ) {
+            system "rm -rf $d.prev";
+            die if $CHILD_ERROR;
+            system "mv $d $d.prev";
+            die if $CHILD_ERROR;
+        } else {
+            die "$d already exists.  I won't overwrite it!\n";
+        }
+    }
+
+    $release->mkdir();
+    -d $release->dir or die "$! creating build directory ".$release->dir;
+    -w $release->dir or die "build directory ".$release->dir." is not writable\n";
+
+    my $gen_fh    = open_data_files( $gen_files );
+
+    #put the header and feature-ontology in all the gff3 files
+    my $sofa_url = $pipe->feature_ontology_url;
+
+    #TODO: check that the sofa URL is still accessible
+    $gen_fh->{$_}->print( "##gff-version 3\n##feature-ontology $sofa_url\n" )
+        foreach grep $gen_files->{$_}->{type} eq 'gff3', keys %{$gen_fh};
+
+    foreach my $ctg (@$latest_seqs) {
+        my $ctg_name = $ctg->{name};
+
+        #get the names of all the files we need
+        my (undef,$eug_prot,$eug_cds,$eug_cdna) = $a{renaming}->{obj}->files_for_seq( $ctg->{batch}, $ctg->{name} );
+        my ($seq,$ctg_agp)                      =      $a{seq}->{obj}->files_for_seq( $ctg->{batch}, $ctg->{name} );
+
+        copy_or_die( $seq,      $gen_fh->{genomic_fasta} );
+        copy_or_die( $eug_cds,  $gen_fh->{cds_fasta}     );
+        copy_or_die( $eug_cdna, $gen_fh->{cdna_fasta}    );
+
+        # using this sequence's AGP file, make the sol -> gb ID mapping
+        # file, and write some sequence-region lines
+        if ( identifier_namespace( $ctg_name ) eq 'tomato_bac_contig' ) {
+            process_agp( $ctg_name, $ctg_agp, $gen_fh );
+        }
+
+        # fetch our human_readable_description if available
+        my $human_readable_descriptions = {};
+        my ( $prot_w_desc ) = $a{human_readable_description}->{obj}->files_for_seq( $ctg->{batch}, $ctg->{name} );
+        if ( -f $prot_w_desc ) {
+            $human_readable_descriptions = extract_human_readable_desc_strings( $prot_w_desc );
+            format_deflines( $eug_prot, $human_readable_descriptions, $gen_fh->{protein_fasta} );
+        } else {
+            copy_or_die( $eug_prot, $gen_fh->{protein_fasta} );
+        }
+
+        # gff3-escape all the description strings (if any)
+        $_ = gff3_escape( $_ )
+            for values %$human_readable_descriptions;
+
+        # make a closure over this contig's human readable descriptions that
+        # will insert them into each relevant gff3 line.  this is used for
+        # processing the 'renaming' GFF3 below
+        my $add_human_readable_gff3_elements = sub {
+            optionally_add_human_readable_attr_to_gene_model_gff3_line( shift, $human_readable_descriptions )
+        };
+
+        my @gff3_dump_specs =
+            (
+                { analyses => 'renaming',
+                  gff3_output_spec_index => 0,
+                  release_files => [qw| combi_genomic_gff3  models_gff3 |],
+                  alter_lines_with => $add_human_readable_gff3_elements,
+                  errors_fatal => 1,
+                },
+                { analyses => [qw[ geneid_tomato
+                                   genemark_ath
+                                   genemark_tom
+                                   glimmerhmm_ath
+                                   glimmerhmm_tomato
+                                   augustus
+                                 ]
+                              ],
+                  gff3_output_spec_index => 0,
+                  release_files => [qw| combi_genomic_gff3 genefinders_gff3 |],
+                },
+                { analyses => 'trnascanse',
+                  gff3_output_spec_index => 1,
+                  release_files => [qw| combi_genomic_gff3 genefinders_gff3 |],
+                },
+                { analyses => [qw[
+                                  sgn_markers
+                                  sgn_loci
+                                 ]
+                              ],
+                  gff3_output_spec_index => 1,
+                  release_files => [qw| combi_genomic_gff3 sgn_data_gff3 |],
+              },
+                { analyses => 'sgn_unigenes',
+                  gff3_output_spec_index => 1,
+                  release_files => [qw| combi_genomic_gff3 cdna_algn_gff3 sgn_data_gff3|],
+              },
+                { analyses => 'infernal',
+                  gff3_output_spec_index => 0,
+                  release_files => 'combi_genomic_gff3',
+              },
+                { analyses => qr/^transcripts_/i,
+                  gff3_output_spec_index => 0,
+                  release_files => [qw| combi_genomic_gff3 cdna_algn_gff3 |],
+              },
+                { analyses => qr/^blastp_/i,
+                  gff3_output_spec_index => 1,
+                  release_files => 'functional_prot_gff3',
+                  alter_lines_with => \&fix_blastp_gff3,
+              },
+                { analyses => 'interpro',
+                  gff3_output_spec_index => 0,
+                  alter_lines_with => \&fix_interpro_gff3,
+                  release_files => 'functional_prot_gff3',
+              },
+                { analyses => 'rpsblast',
+                  gff3_output_spec_index => 0,
+                  alter_lines_with => \&rpsblast_m8_to_gff3,
+                  release_files => 'functional_prot_gff3',
+              },
+               );
+
+        # validate the above dumpspecs so we aren't surprised later with
+        # errors after we have already been dumping for a while
+        validate_dumpspec(\%a,$gen_fh,$_) for @gff3_dump_specs;
+
+        # now do all the actual dumping, since we are now reasonably certain
+        # that it will succeed
+        foreach my $dump (@gff3_dump_specs) {
+            foreach my $arecord ( find_analyses( \%a, $dump->{analyses} ) ) {
+
+
+                my $index = $dump->{gff3_output_spec_index};
+                my @filehandles = @{$gen_fh}{flatten $dump->{release_files}};
+
+                my $sub = $dump->{alter_lines_with};
+
+                my $file = ($arecord->{obj}->files_for_seq($ctg->{batch},$ctg->{name}))[$index];
+                #print STDERR "dumping $arecord->{name}:$file to ".join(' ',flatten $dump->{release_files})."\n";
+                unless ( $dump->{errors_fatal} || -f $file ) {
+                    report_file_not_available( $ctg, $arecord, $file );
+                } else {
+                    copy_gff3_or_die( $arecord->{name}, $sub, $file, @filehandles);
+                }
+            }
+        }
+    }
+
+    #close all the data files
+    close_all( $gen_fh );
+
+    # warn about any files that were not available
+    warn_not_available_summary();
+
+    # post-process all the GFF3 files in place to clean them up, sort them, add sync marks, etc.
+    postprocess_gff3(  $gen_files->{$_->{seq_type}.'_fasta'}->{file},  $_->{file}  )
+        foreach grep $_->{type} eq 'gff3', values %$gen_files ;
 }
 
 # make sure a given dumpspec is valid
@@ -448,7 +453,7 @@ sub process_agp {
     foreach ( @{$gen_fh}{qw/contig_gff3 combi_genomic_gff3/} ) {
         $_->print( join("\t",
                         $ctg_name,
-                        $official_gff3_source_name,
+                        'ITAG',
                         'clone',
                         $line->{ostart},
                         $line->{oend},
@@ -648,6 +653,7 @@ sub collect_stats {
 	$stats{gene_cnt}++
       } elsif( $type eq 'mRNA' ) {
 	$stats{gene_model_cnt}++;
+        $stats{gene_mrna_counts} ||= {};
         $stats{gene_mrna_counts}{$feature->get_Annotations('Parent')->value}++;
       }
     }
@@ -666,7 +672,8 @@ sub collect_stats {
   ## aggregate the splice variant statistics
   my $variants = delete $stats{gene_mrna_counts};
   # currently just counting how many genes have been annotated with splice variants
-  $stats{genes_with_splice_variants} = scalar grep $_ > 1, values %$variants;
+  $stats{genes_with_splice_variants_cnt} = scalar grep $_ > 1, values %$variants;
+  $stats{genes_with_splice_variants_pct} = sprintf( '%0.1f', 100 * $stats{genes_with_splice_variants_cnt}/$stats{gene_cnt} );
 
   undef $combi_in; #< close it
 
@@ -783,7 +790,7 @@ sub postprocess_gff3 {
   my @other_pragmas;
   while ( my $line = <$sg> ) {
     chomp $line;
-    $line = munge_identifiers($line) #< REMOVEME
+    $line = munge_identifiers($line); #< REMOVEME
      if ( $line =~ /##\s*(.+)$/ ) {
       #it's a directive
       my $directive = $1;
@@ -903,7 +910,15 @@ sub write_readme {
   $stats ||= {};
   my %fmt_stats = %$stats;
   $_ = commify_number($_ || 0) foreach values %fmt_stats;
-  $fmt_stats{genes_with_splice_variants} ||= 'no';
+
+  # format the splice variants text
+  if( $fmt_stats{genes_with_splice_variants_cnt} ) {
+      $fmt_stats{genes_with_splice_variants_pct} = " ($fmt_stats{genes_with_splice_variants_pct}%)";
+  } else {
+      $fmt_stats{genes_with_splice_variants_cnt} = 'no';
+      $fmt_stats{genes_with_splice_variants_pct} = '';
+  }
+
   lock_hash(%fmt_stats);
 
   my $file_descriptions = file_descriptions($release,$gen_files);
@@ -933,7 +948,7 @@ $release_tag $organism Genome release
 
 The $project_name project ($project_acronym) is pleased to announce the release of the latest version of the official $organism genome annotation ($release_tag).  This release was generated on $date_str.
 
-The $release_tag release contains $fmt_stats{gene_cnt} genes in all, with $fmt_stats{gene_model_cnt} gene models. Currently, $fmt_stats{genes_with_splice_variants} genes have annotated splice variants.  Approximately $fmt_stats{genome_coverage_pct}% of the euchromatic $organism genome is covered by the current $project_acronym annotation.
+The $release_tag release contains $fmt_stats{gene_cnt} genes in all, with $fmt_stats{gene_model_cnt} gene models. Currently, $fmt_stats{genes_with_splice_variants_cnt} genes$fmt_stats{genes_with_splice_variants_pct} have annotated splice variants.  Approximately $fmt_stats{genome_coverage_pct}% of the euchromatic $organism genome is covered by the current $project_acronym annotation.
 
 This $project_acronym release has $fmt_stats{mapped_ests_cnt} cDNA and EST sequences mapped to the genome, resulting in $fmt_stats{protein_coding_with_cdna_or_est_cnt} protein coding genes derived at least partly from supporting cDNA and/or EST alignments and thus $fmt_stats{protein_coding_without_cdna_or_est_cnt} protein coding genes not utilizing transcript support.  With respect to protein homology, $fmt_stats{protein_coding_with_prot_cnt} gene models used homology to known proteins in their construction, while $fmt_stats{protein_coding_without_prot_cnt} did not.
 
@@ -1014,17 +1029,17 @@ sub wrap_long_lines {
 #    ...
 # ]
 sub list_latest_seqs {
-  my ($pipe,%an) = @_;
+  my ($pipe,$batchnums,$an) = @_;
 
   my @seqs;
 
  BATCH:
-  foreach my $bn (@batchnums) {
+  foreach my $bn (@$batchnums) {
 
     my $batch = $pipe->batch($bn);
 
     my $skip_flag = 0;
-    while( my ($aname,$a) = each %an ) {
+    while( my ($aname,$a) = each %$an ) {
       #warn "checking done for $aname ".Dumper($aname,$a);
       my $status = $a->{obj}->status($batch);
       unless( !$a->{required} || $status eq 'done' ) {
