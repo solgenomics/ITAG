@@ -1412,7 +1412,7 @@ automatic classes = Sequence clone match nucleotide_motif
 
 #track to show DNA and GC content
 [peptides]
-glyph          = dna
+glyph          = protein
 global feature = 1
 height         = 40
 do_gc          = 1
@@ -1420,8 +1420,9 @@ fgcolor        = red
 category       = General
 axis_color     = blue
 strand         = both
-key            = Peptides/GC Content
-citation       = This track displays a GC content graph of the reference sequence at low magnifications and the peptide sequence itself at higher magnifications.
+key            = Peptides/KD Plot
+citation       = This track displays a Kyte-Doolittle hydropathy plot of the protein sequence at low magnifications and the peptide sequence itself at higher magnifications.
+
 
 [blastp_trembl]
 feature      = match:ITAG_blastp_trembl
