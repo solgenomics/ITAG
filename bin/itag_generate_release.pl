@@ -242,6 +242,16 @@ sub dump_data {
             process_agp( $ctg_name, $ctg_agp, $gen_fh );
         }
 
+        # fetch the GO terms for each mrna if available
+        my $go_terms = {};
+        my ( $go_tabular ) = $a{go}->{obj}->files_for_seq( $ctg->{batch}, $ctg->{name} );
+        if( ! -f $go_tabular ) {
+            report_file_not_available( $ctg, $a{go}, $go_tabular );
+        }
+        elsif( -s $go_tabular ) {
+            $go_terms = get_go_terms_for_mrnas( $go_tabular );
+        }
+
         # fetch our human_readable_description if available
         my $human_readable_descriptions = {};
         my ( $prot_w_desc ) = $a{human_readable_description}->{obj}->files_for_seq( $ctg->{batch}, $ctg->{name} );
@@ -256,19 +266,14 @@ sub dump_data {
         $_ = gff3_escape( $_ )
             for values %$human_readable_descriptions;
 
-        # make a closure over this contig's human readable descriptions that
-        # will insert them into each relevant gff3 line.  this is used for
-        # processing the 'renaming' GFF3 below
-        my $add_human_readable_gff3_elements = sub {
-            optionally_add_human_readable_attr_to_gene_model_gff3_line( shift, $human_readable_descriptions )
-        };
-
         my @gff3_dump_specs =
             (
                 { analyses => 'renaming',
                   gff3_output_spec_index => 0,
                   release_files => [qw| combi_genomic_gff3  models_gff3 |],
-                  alter_lines_with => $add_human_readable_gff3_elements,
+                  alter_lines_with => sub {
+                      add_functional_annotations( shift, $go_terms, $human_readable_descriptions )
+                  },
                   errors_fatal => 1,
                 },
                 { analyses => [qw[ geneid_tomato
@@ -530,32 +535,35 @@ sub gff3_escape {
 
 
 # get all the gene models from renaming and dump them into the combi and models files
-sub optionally_add_human_readable_attr_to_gene_model_gff3_line {
-  my ($gff3_line, $descriptions ) = @_;
+sub add_functional_annotations {
+  my ($gff3_line, $ontology_terms, $descriptions ) = @_;
 
-  # only add the human_readable_descriptions to gene, mRNA, and CDS features
-  # also, extract the gene model name with this regexp
-  my ($type,$gene_model_name) = $gff3_line =~ m(  \t
-						  (?:gene|mRNA|CDS)  # gene, mRNA, or cds feature
-						  \t                 # flanked by tabs
-						  .+                 # and then whatever
-						  ID=(gene|mRNA|CDS):([^;\s]+) # and then an ID attribute with a gene, mRNA, or CDS type
-					       )x
-						 or return $gff3_line;
+  # currently only operate on mRNA features
+  my ($type,$id) =
+      $gff3_line =~ m(  \t
+                        (?:mRNA)  # feature type
+                        \t        # flanked by tabs
+                        .+        # and then whatever
+                        ID=(mRNA):([^;\n]+) # and then an ID attribute with an mRNA type
+                     )x
+     or return $gff3_line;
 
-  $gene_model_name =~ s/\.\d+$// unless $type eq 'gene';
-
-  # look up the human-readable desc
-  my $desc_string = $descriptions->{$gene_model_name}
-    or return $gff3_line;
-
-  # add it to the gff3 string
   chomp $gff3_line;
-  $gff3_line =~ /functional_description=/ and die "gff3 line already contains a functional_description attribute:\n$gff3_line";
-  $gff3_line =~ s/;*\s*$/;/;	#< put a semicolon at the end of the attrs if there are any
-  $gff3_line .= "functional_description=$desc_string";
-  return $gff3_line."\n";
-  #return join("\t", @fields)."\n";
+
+  # add the human-readable desc if present
+  if( my $desc_string = $descriptions->{$id}) {
+      # add it to the gff3 string
+      $gff3_line .= ";functional_description=".uri_escape( $desc_string );
+  }
+
+  # add ontology terms if present
+  if( my $terms = $ontology_terms->{$id} ) {
+      $gff3_line .= ";Ontology_term=$_" for @$terms;
+  }
+
+  $gff3_line .= "\n";
+
+  return $gff3_line;
 }
 
 # given a fasta file containing the functional description in the
@@ -1218,9 +1226,6 @@ glyph        = segments
 fgcolor      = black
 bgcolor      = darkorange
 stranded     = 1
-description  = sub { use CXGN::Page::FormattingHelpers;  CXGN::Page::FormattingHelpers::truncate_string((shift->attributes('functional_description'))[0], 20, '...') }
-font2color   = blue
-title        = sub { (shift->attributes('functional_description'))[0] }
 category     = Gene Model features
 das category = transcription
 strand_arrow = 1
@@ -1234,6 +1239,9 @@ glyph        = processed_transcript
 fgcolor      = black
 bgcolor      = goldenrod
 stranded     = 1
+description  = sub { use CXGN::Page::FormattingHelpers;  CXGN::Page::FormattingHelpers::truncate_string((shift->attributes('functional_description'))[0], 20, '...') }
+font2color   = blue
+title        = sub { (shift->attributes('functional_description'))[0] }
 category     = Gene Model features
 das category = transcription
 strand_arrow = 1
@@ -1567,4 +1575,34 @@ sub report_file_not_available {
   our %not_available;
   push @{ $not_available{ $a_rec->{name} }{ $seq_rec->{batch} } },$file;
   $not_available{_global}++;
+}
+
+# parses a tabular file of GO terms in the format:
+# scaffold00010_11.1.1    0003824,0008643,0000166
+# returns a hashref like:
+# { 'scaffold00010_11.1.1' => ['GO:0003824', 'GO:0008643', 'GO:0000166'],
+#   ...
+# }
+sub get_go_terms_for_mrnas {
+    my ( $go_tabular_file ) = @_;
+
+    my %mrna_terms;
+
+    open my $t, '<', $go_tabular_file or die "$! reading '$go_tabular_file'";
+    while ( my $line = <$t> ) {
+        # parse the line
+        chomp $line;
+        $line = munge_identifiers($line); #< REMOVEME
+
+        my ( $mrna_name, @go_nums ) = split /\s+/, $line;
+        my @go_terms = map { map "GO:$_", split /,+/, $_ } @go_nums;
+
+        # check the go nums
+        /^GO:\d+$/ or die "invalid go term $_" for @go_terms;
+
+        # record them in the hash
+        $mrna_terms{$mrna_name} = \@go_terms;
+    }
+
+    return \%mrna_terms;
 }
