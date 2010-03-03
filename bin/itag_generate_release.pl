@@ -1592,11 +1592,11 @@ sub get_go_terms_for_mrnas {
         munge_identifiers( \$line ); #< REMOVEME
 
         my ( $mrna_name, $go_nums ) = split /\s+/, $line, 2;
-	next if $go_nums eq 'No'; #< no results
+	next unless $go_nums =~ /\d{4,}/;
         my @go_terms = map "GO:$_", split /[\s,]+/, $go_nums;
 
         # check the go nums
-        /^GO:\d+$/ or die "invalid go term $_" for @go_terms;
+        /^GO:\d+$/ or die "invalid go term $_ in list '$go_nums'" for @go_terms;
 
         # record them in the hash
         $mrna_terms{$mrna_name} = \@go_terms;
