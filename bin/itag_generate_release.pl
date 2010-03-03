@@ -220,8 +220,10 @@ sub dump_data {
     $gen_fh->{$_}->print( "##gff-version 3\n##feature-ontology $sofa_url\n" )
         foreach grep $gen_files->{$_}->{type} eq 'gff3', keys %{$gen_fh};
 
+    print "dumping data ... ";
     foreach my $ctg (@$latest_seqs) {
         my $ctg_name = $ctg->{name};
+	print "$ctg_name ";
 
         #get the names of all the files we need
         my (undef,$eug_prot,$eug_cds,$eug_cdna) = $a{renaming}->{obj}->files_for_seq( $ctg->{batch}, $ctg->{name} );
@@ -348,6 +350,7 @@ sub dump_data {
             }
         }
     }
+    print "finished dumping data.\n";
 
     #close all the data files
     close_all( $gen_fh );
