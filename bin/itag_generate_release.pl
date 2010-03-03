@@ -625,6 +625,8 @@ sub close_all {
 sub collect_stats {
   my ($gen_files) = @_;
 
+  print "collecting statistics...";
+
   my %stats = map {$_=>''} qw(
 			      gene_cnt
 			      gene_model_cnt
@@ -754,6 +756,9 @@ sub collect_stats {
 #   while( my $feat = $functional_in->next_feature ) {
 #   }
   lock_hash(%stats);
+
+  print "done.\n";
+
   return \%stats;
 }
 
