@@ -189,9 +189,7 @@ exit 0;
 ######################## SUBROUTINES ##################
 # REMOVEME
 sub munge_identifiers {
-    my ($str) = @_;
-    $str =~ s/scaffold(?=\d)/SL1.00sc/gi;
-    return $str;
+    ${$_[0]} =~ s/scaffold(?=\d{5})/SL1.00sc/gi;
 }
 
 # for each contig, write the appropriate lines to the output files
@@ -775,7 +773,7 @@ sub file_descriptions {
 #given a gff3 file, sort it and clean up its pragmas
 sub postprocess_gff3 {
   my ($seqs_file,$gff3_file) = @_;
-  #warn "postprocess_gff3 called with ($seqs_file,$gff3_file)\n";
+  print "postprocessing gff3 $gff3_file with reference sequences $seqs_file\n";
 
   -f $seqs_file or die "seqs file '$seqs_file' not found!";
   -f $gff3_file or die "gff3 file '$gff3_file' not found!";
@@ -798,7 +796,7 @@ sub postprocess_gff3 {
   my @other_pragmas;
   while ( my $line = <$sg> ) {
     chomp $line;
-    $line = munge_identifiers($line); #< REMOVEME
+    munge_identifiers( \$line ); #< REMOVEME
      if ( $line =~ /##\s*(.+)$/ ) {
       #it's a directive
       my $directive = $1;
@@ -902,7 +900,9 @@ sub format_deflines {
 	      .($desc ? " functional_description:$desc" : '')
 	    );
 
-    $out_fh->print('>'.$s->display_id.' '.$s->desc."\n".$s->seq."\n");
+    my $line = '>'.$s->display_id.' '.$s->desc."\n".$s->seq."\n";
+    munge_identifiers( \$line ); #< REMOVEME
+    $out_fh->print( $line );
   }
 }
 
@@ -949,7 +949,7 @@ sub write_readme {
   my $release_dirname = $release->dir_basename;
   my $release_tag     = $release->release_tag;
 
-  my $date_str = POSIX::strftime( "%A, %B %d, %Y GMT", gmtime() );
+  my $date_str = POSIX::strftime( "%A %B %d, %Y", gmtime() );
 
   my $readme_text = <<EOT;
 $release_tag $organism Genome release
@@ -1522,7 +1522,7 @@ sub copy_or_die {
   open my $in, $file or die "$! reading $file";
   eval {
     while(my $line = <$in> ){
-        $line = munge_identifiers( $line ); #< REMOVEME
+        munge_identifiers( \$line ); #< REMOVEME
         $fh->print($line);
     }
   }; if($EVAL_ERROR) {
@@ -1592,7 +1592,7 @@ sub get_go_terms_for_mrnas {
     while ( my $line = <$t> ) {
         # parse the line
         chomp $line;
-        $line = munge_identifiers($line); #< REMOVEME
+        munge_identifiers( \$line ); #< REMOVEME
 
         my ( $mrna_name, @go_nums ) = split /\s+/, $line;
         my @go_terms = map { map "GO:$_", split /,+/, $_ } @go_nums;
