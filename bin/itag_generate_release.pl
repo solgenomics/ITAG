@@ -82,9 +82,6 @@ use CXGN::Tools::Identifiers qw/ parse_identifier identifier_namespace /;
 use CXGN::Tools::List qw/str_in max distinct flatten/;
 use CXGN::Tools::Text qw/commify_number/;
 
-use CXGN::DB::Connection;
-my $dbh = CXGN::DB::Connection->new;
-
 ### parse and validate command line args
 our %opt;
 getopts('d:p:b:PDG',\%opt) or pod2usage(1);
@@ -433,7 +430,7 @@ sub process_agp {
     my $ident_namespace = identifier_namespace( $line->{ident} ) || '';
     if ( $ident_namespace eq 'genbank_accession' ) {
       #if it's a sol-style bac sequence ident, look up its genbank name
-      if (my $solid = genbank_acc_to_seq_name( $line->{ident}, $dbh ) ) {
+      if (my $solid = genbank_acc_to_seq_name( $line->{ident}, get_dbh() ) ) {
 	warn "$ctg_name spec: translating genbank accession $line->{ident} to $solid\n";
 	$gen_fh->{sol_gb_mapping}->print( "$solid\t$line->{ident}\n" );
 	$line->{ident} = $solid;
@@ -441,7 +438,7 @@ sub process_agp {
 	die "could not find SOL ID for genbank accession '$line->{ident}'!\n";
       }
     } elsif ( $ident_namespace eq 'bac_sequence' ) {
-      if (my $gbacc = seq_name_to_genbank_acc( $line->{ident}, $dbh ) ) {
+      if (my $gbacc = seq_name_to_genbank_acc( $line->{ident}, get_dbh() ) ) {
 	$gen_fh->{sol_gb_mapping}->print( "$line->{ident}\t$gbacc\n" );
       } else {
 	$gen_fh->{sol_gb_mapping}->print( "$line->{ident} NO_ACCESSION_REGISTERED\n" );
@@ -1594,8 +1591,9 @@ sub get_go_terms_for_mrnas {
         chomp $line;
         munge_identifiers( \$line ); #< REMOVEME
 
-        my ( $mrna_name, @go_nums ) = split /\s+/, $line;
-        my @go_terms = map { map "GO:$_", split /,+/, $_ } @go_nums;
+        my ( $mrna_name, $go_nums ) = split /\s+/, $line, 2;
+	next if $go_nums eq 'No'; #< no results
+        my @go_terms = map "GO:$_", split /[\s,]+/, $go_nums;
 
         # check the go nums
         /^GO:\d+$/ or die "invalid go term $_" for @go_terms;
@@ -1605,4 +1603,10 @@ sub get_go_terms_for_mrnas {
     }
 
     return \%mrna_terms;
+}
+
+my $dbh;
+sub get_dbh {
+    require CXGN::DB::Connection;
+    $dbh ||= CXGN::DB::Connection->new;
 }
