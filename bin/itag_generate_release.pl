@@ -167,7 +167,7 @@ my $gen_files = $release->get_all_files;
 dump_data( $release, $gen_files );
 
 #now collect statistics about this release to use in the README file
-my $stats = collect_stats($gen_files);
+my $stats = collect_stats( $gen_files );
 
 #write the readme file
 write_readme( $release, 0, $gen_files, $stats );
@@ -629,8 +629,10 @@ sub collect_stats {
 			      gene_cnt
 			      gene_model_cnt
 			      gene_mrna_counts
+                              gene_length_avg
 			      genes_with_splice_variants_pct
 			      genes_with_splice_variants_cnt
+                              genes_with_ontology_terms
 			      genome_coverage_pct
 			      mapped_ests_cnt
 			      protein_coding_with_cdna_or_est_cnt
@@ -642,22 +644,30 @@ sub collect_stats {
 			      loci_similar_to_unch_prots_cnt
 			      loci_no_prot_hits_cnt
 			      loci_no_cdna_est_evidence_cnt
+                              unique_ontology_terms
 			     );
   lock_keys(%stats);
 
   #open the aggregated GFF3 file
   my $combi_in = Bio::FeatureIO->new( -format => 'gff', -version => 3, -file => $gen_files->{combi_genomic_gff3}->{file} );
-  while( my $feature = $combi_in->next_feature) {
+  my $gene_length_accum = 0;
+  my %ontology_terms_seen;
+  while( my $feature = $combi_in->next_feature ) {
     #print "stats got feature, of type ".$feature->type->name."\n";
     my $src = lc $feature->source->value;
     my $type = $feature->type->name;
     if( $src eq 'itag_renaming' ) {
       if( $type eq 'gene' ) {
-	$stats{gene_cnt}++
+	$stats{gene_cnt}++;
+        $gene_length_accum += $feature->length;
       } elsif( $type eq 'mRNA' ) {
 	$stats{gene_model_cnt}++;
         $stats{gene_mrna_counts} ||= {};
         $stats{gene_mrna_counts}{$feature->get_Annotations('Parent')->value}++;
+        if( my @terms = $feature->get_Annotations('Ontology_term') ) {
+            $stats{genes_with_ontology_terms}++;
+            $ontology_terms_seen{$_} = 1 for @terms;
+        }
       }
     }
     elsif( $src =~ /^itag_transcripts_/i ) {
@@ -671,6 +681,12 @@ sub collect_stats {
       }
     }
   }
+
+  # calculate average gene length
+  $stats{gene_length_avg} = sprintf( '%0.0f', $gene_length_accum / $stats{gene_cnt} );
+
+  # calculate number of unique ontology terms
+  $stats{unique_ontology_terms} = scalar keys %ontology_terms_seen;
 
   ## aggregate the splice variant statistics
   my $variants = delete $stats{gene_mrna_counts};
@@ -953,7 +969,7 @@ $release_tag $organism Genome release
 
 The $project_name project ($project_acronym) is pleased to announce the release of the latest version of the official $organism genome annotation ($release_tag).  This release was generated on $date_str.
 
-The $release_tag release contains $fmt_stats{gene_cnt} genes in all, with $fmt_stats{gene_model_cnt} gene models. Currently, $fmt_stats{genes_with_splice_variants_cnt} genes$fmt_stats{genes_with_splice_variants_pct} have annotated splice variants.  Approximately $fmt_stats{genome_coverage_pct}% of the euchromatic $organism genome is covered by the current $project_acronym annotation.
+The $release_tag release contains $fmt_stats{gene_cnt} genes in all, with $fmt_stats{gene_model_cnt} gene models. Average gene length is $fmt_stats{gene_length_avg} base pairs.  Currently, $fmt_stats{genes_with_splice_variants_cnt} genes$fmt_stats{genes_with_splice_variants_pct} have annotated splice variants.  Approximately $fmt_stats{genome_coverage_pct}% of the euchromatic $organism genome is covered by the current $project_acronym annotation.  $fmt_stats{genes_with_ontology_terms} genes have ontology terms associated, with a total of $fmt_stats{unique_ontology_terms} different ontology terms represented.
 
 This $project_acronym release has $fmt_stats{mapped_ests_cnt} cDNA and EST sequences mapped to the genome, resulting in $fmt_stats{protein_coding_with_cdna_or_est_cnt} protein coding genes derived at least partly from supporting cDNA and/or EST alignments and thus $fmt_stats{protein_coding_without_cdna_or_est_cnt} protein coding genes not utilizing transcript support.  With respect to protein homology, $fmt_stats{protein_coding_with_prot_cnt} gene models used homology to known proteins in their construction, while $fmt_stats{protein_coding_without_prot_cnt} did not.
 
