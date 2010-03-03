@@ -779,29 +779,19 @@ sub file_descriptions {
   #remove ending newlines
   $file_descriptions =~ s/\n+$//;
 
-#   open my $desc, '>',$gen_files->{readme_file_desc}->{file}
-#     or die "$! opening $gen_files->{readme_file_desc}->{file}";
-#   print $desc <<EOT;
-# This file describes the contents of each file in the $release_tag release.
-
-# $file_descriptions
-# EOT
-#   close $desc;
-
   return $file_descriptions;
 }
 
 #given a gff3 file, sort it and clean up its pragmas
 sub postprocess_gff3 {
   my ($seqs_file,$gff3_file) = @_;
+
   print "postprocessing gff3 $gff3_file with reference sequences $seqs_file\n";
 
   -f $seqs_file or die "seqs file '$seqs_file' not found!";
   -f $gff3_file or die "gff3 file '$gff3_file' not found!";
 
   clear_uniq_ids();
-
-  #warn "postprocessing $gff3_file...\n";
 
   #open a temp file for our output
   my ($temp_out_fh,$temp_out_file) = tempfile(File::Spec->catfile(File::Spec->tmpdir,"$FindBin::Script-gff3-postproc-XXXXXX"), UNLINK => 1);
