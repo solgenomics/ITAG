@@ -980,17 +980,23 @@ sub write_readme {
   #PARAGRAPH ABOUT EST COVERAGE AND PROTEIN SIMILARITY
 # $fmt_stats{loci_similar_to_unch_prots_cnt} loci have similarity only to uncharacterised proteins (i.e. hypothetical, predicted, unknown etc), $fmt_stats{loci_no_prot_hits_cnt} have no significant protein similarity to GenBank proteins, and of these $fmt_stats{loci_no_cdna_est_evidence_cnt} also have no supporting EST/cDNA evidence and may represent erroneous gene predictions.
 
+  if( $fmt_stats{genome_coverage_pct} > 100 ) {
+      $fmt_stats{genome_coverage_pct} = sprintf('%0.1f-fold',$fmt_stats{genome_coverage_pct}/100);
+  } else {
+      $fmt_stats{genome_coverage_pct} .= '%';
+  }
+
   my $release_dirname = $release->dir_basename;
   my $release_tag     = $release->release_tag;
 
-  my $date_str = POSIX::strftime( "%A %B %d, %Y", gmtime() );
+  my $date_str = POSIX::strftime( "%A %B %e, %Y", gmtime() );
 
   my $readme_text = <<EOT;
 $release_tag $organism Genome release
 
-The $project_name project ($project_acronym) is pleased to announce the release of the latest version of the official $organism genome annotation ($release_tag).  This release was generated on $date_str.
+The $project_name project ($project_acronym) is pleased to announce the release of the latest version of the official $organism genome annotation ($release_tag).  This set of release files was generated on $date_str.
 
-The $release_tag release contains $fmt_stats{gene_cnt} genes in all, with $fmt_stats{gene_model_cnt} gene models. Average gene length is $fmt_stats{gene_length_avg} base pairs.  Currently, $fmt_stats{genes_with_splice_variants_cnt} genes$fmt_stats{genes_with_splice_variants_pct} have annotated splice variants.  Approximately $fmt_stats{genome_coverage_pct}% of the euchromatic $organism genome is covered by the current $project_acronym annotation.  $fmt_stats{genes_with_ontology_terms} genes have ontology terms associated, with a total of $fmt_stats{unique_ontology_terms} different ontology terms represented.
+The $release_tag release contains $fmt_stats{gene_cnt} genes in all, with $fmt_stats{gene_model_cnt} gene models. Average gene length is $fmt_stats{gene_length_avg} base pairs.  Currently, $fmt_stats{genes_with_splice_variants_cnt} genes$fmt_stats{genes_with_splice_variants_pct} have annotated splice variants.  The current $project_acronym annotation provides approximately $fmt_stats{genome_coverage_pct} of the $organism genome.  $fmt_stats{genes_with_ontology_terms} genes have ontology terms associated, with a total of $fmt_stats{unique_ontology_terms} different ontology terms represented.
 
 This $project_acronym release has $fmt_stats{mapped_ests_cnt} cDNA and EST sequences mapped to the genome, resulting in $fmt_stats{protein_coding_with_cdna_or_est_cnt} protein coding genes derived at least partly from supporting cDNA and/or EST alignments and thus $fmt_stats{protein_coding_without_cdna_or_est_cnt} protein coding genes not utilizing transcript support.  With respect to protein homology, $fmt_stats{protein_coding_with_prot_cnt} gene models used homology to known proteins in their construction, while $fmt_stats{protein_coding_without_prot_cnt} did not.
 
