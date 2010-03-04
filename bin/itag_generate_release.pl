@@ -145,10 +145,6 @@ write_gbrowse_prot( $release );
 exit 0;
 
 ######################## SUBROUTINES ##################
-# REMOVEME
-sub munge_identifiers {
-    ${$_[0]} =~ s/scaffold(?=\d{5})/SL1.00sc/gi;
-}
 
 # for each contig, write the appropriate lines to the output files
 sub dump_data {
