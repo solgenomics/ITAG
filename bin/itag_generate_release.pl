@@ -134,12 +134,12 @@ write_gbrowse_genomic( $release );
 write_gbrowse_prot( $release );
 
 #and make the tarfile
-print "making release tarfile ...\n";
-$release->make_tarfile();
+#print "making release tarfile ...\n";
+#$release->make_tarfile();
 
 #update the ITAG_current link in the target dir, if any
-print "updating symlink ...\n";
-update_itag_current_link($target_path);
+#print "updating symlink ...\n";
+#update_itag_current_link($target_path);
 
 #and exit
 exit 0;
@@ -659,7 +659,7 @@ sub collect_stats {
 			      protein_coding_without_cdna_or_est_cnt
 			      protein_coding_with_prot_cnt
 			      protein_coding_without_prot_cnt
-			      gene_model_lengths
+			      gene_model_length_classes
 			      loci_similar_to_sgn_loci
 			      loci_similar_to_unch_prots_cnt
 			      loci_no_prot_hits_cnt
@@ -668,39 +668,50 @@ sub collect_stats {
 			     );
   lock_keys(%stats);
 
+  #use Smart::Comments;
   #open the aggregated GFF3 file
-  my $combi_in = Bio::FeatureIO->new( -format => 'gff', -version => 3, -file => $gen_files->{combi_genomic_gff3}->{file} );
+  open my $combi_in, '<', $gen_files->{combi_genomic_gff3}->{file} or die "$! reading combi gff3 file\n";
   my $gene_length_accum = 0;
   my %ontology_terms_seen;
-  while( my $feature = $combi_in->next_feature ) {
-    #print "stats got feature, of type ".$feature->type->name."\n";
-    my $src = lc $feature->source->value;
-    my $type = $feature->type->name;
+  while( my $line = <$combi_in> ) {
+    chomp $line;
+    ### line: $line
+    my @f = split /\t/, $line, 9;
+
+    my $src = lc $f[1];
+    my $type = $f[2];
+    ### src: $src
+    ### type: $type
     if( $src eq 'itag_renaming' ) {
       if( $type eq 'gene' ) {
 	$stats{gene_cnt}++;
-        $gene_length_accum += $feature->length;
+        $gene_length_accum +=  $f[4]-$f[3]+1;
+	### length: $f[4]-$f[3]+1
       } elsif( $type eq 'mRNA' ) {
 	$stats{gene_model_cnt}++;
         $stats{gene_mrna_counts} ||= {};
-        $stats{gene_mrna_counts}{$feature->get_Annotations('Parent')->value}++;
-        if( my @terms = $feature->get_Annotations('Ontology_term') ) {
+	my ($parent) = $line =~ /Parent=gene:([^;\n]+)/ or die "cannot parse parent from gff3 line:\n$line\n";
+	### parent: $parent
+        $stats{gene_mrna_counts}{$parent}++;
+        if( my @terms = $line =~ /Ontology_term=([^;\n]+)/g ) {
             $stats{genes_with_ontology_terms}++;
             $ontology_terms_seen{$_} = 1 for @terms;
+	    ### terms: @terms
         }
       }
     }
     elsif( $src =~ /^itag_transcripts_/i ) {
       if( $type eq 'match' ) {
-	my @tgts = $feature->annotation->get_Annotations('Target');
-	our %seen_est;
-	unless($seen_est{$tgts[0]->target_id}) {
+        my @tgts = map [split], $line =~ /Target=([^;\n]+)/g;
+	### targets: @tgts
+	our %stats_seen_est;
+	unless($stats_seen_est{$tgts[0][0]}++) {
 	  $stats{mapped_ests_cnt}++;
-	  $seen_est{$tgts[0]->target_id}=1;
 	}
       }
     }
   }
+  close $combi_in;
 
   # calculate average gene length
   $stats{gene_length_avg} = sprintf( '%0.0f', $gene_length_accum / $stats{gene_cnt} );
@@ -713,8 +724,6 @@ sub collect_stats {
   # currently just counting how many genes have been annotated with splice variants
   $stats{genes_with_splice_variants_cnt} = scalar grep $_ > 1, values %$variants;
   $stats{genes_with_splice_variants_pct} = sprintf( '%0.1f', 100 * $stats{genes_with_splice_variants_cnt}/$stats{gene_cnt} );
-
-  undef $combi_in; #< close it
 
   #estimate the coverage percentage by adding up the lengths of the
   #sequence-regions in the gene models file and dividing that by the
@@ -756,10 +765,10 @@ sub collect_stats {
 	$stats{protein_coding_without_prot_cnt}++;
       }
 
-      $stats{'gene_model_lengths'} ||= {};
+      $stats{'gene_model_length_classes'} ||= {};
       my $lc = $desc->{length_class};
       $lc = 'none' unless defined $lc;
-      $stats{'gene_model_lengths'}{$lc}++;
+      $stats{'gene_model_length_classes'}{$lc}++;
     } else {
       chomp $line;
       die "ERROR: no parsable gene description found in defline $line\n";
@@ -820,7 +829,6 @@ sub postprocess_gff3 {
   my @other_pragmas;
   while ( my $line = <$sg> ) {
     chomp $line;
-    munge_identifiers( \$line ); #< REMOVEME
      if ( $line =~ /##\s*(.+)$/ ) {
       #it's a directive
       my $directive = $1;
@@ -838,7 +846,7 @@ sub postprocess_gff3 {
     } elsif( $line =~ /\S/ ) { #< get rid of blank lines
       my @fields = split /\t/,$line;
       @fields == 9 or die "$gff3_file:$INPUT_LINE_NUMBER: invalid gff3 line:\n$line";
-      print $temp_out_fh "weird line:\n$line\n" unless @fields == 9;
+      #print $temp_out_fh "weird line:\n$line\n" unless @fields == 9;
       $fields[1] = 'ITAG' if $fields[1] eq 'ITAG_ITAG';
 
       #uniqify the identifiers
