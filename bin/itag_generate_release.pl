@@ -975,7 +975,7 @@ sub write_readme {
 # Datasets are also available from SGN's bulk download tool (paste in or
 # upload a list of identifiers and download the corresponding data):
 
-# http://www.sgn.cornell.edu/bulk/input.pl
+# http://www.solgenomics.net/bulk/input.pl
 
   #PARAGRAPH ABOUT EST COVERAGE AND PROTEIN SIMILARITY
 # $fmt_stats{loci_similar_to_unch_prots_cnt} loci have similarity only to uncharacterised proteins (i.e. hypothetical, predicted, unknown etc), $fmt_stats{loci_no_prot_hits_cnt} have no significant protein similarity to GenBank proteins, and of these $fmt_stats{loci_no_cdna_est_evidence_cnt} also have no supporting EST/cDNA evidence and may represent erroneous gene predictions.
@@ -1006,11 +1006,11 @@ $file_descriptions
 
 Sequences and annotations can also be viewed and searched on SGN:
 
-http://www.sgn.cornell.edu/gbrowse/
+http://www.solgenomics.net/gbrowse/
 
 The fully annotated chromosome sequences in GFF version 3 format, along with Fasta files of cDNA, CDS, genomic and protein sequences, and lists of genes are available from the SGN ftp site at:
 
-ftp://ftp.sgn.cornell.edu/tomato_genome/annotation/${release_dirname}/
+ftp://ftp.solgenomics.net/tomato_genome/annotation/${release_dirname}/
 
 For those who are not familiar with the relatively new GFF3 format,
 the format specification can be found here:
@@ -1019,17 +1019,17 @@ http://www.sequenceontology.org/gff3.shtml
 
 A graphic display of the $organism sequence and annotation can be viewed using SGN's genome browser. Browse the chromosomes, search for names or short sequences and view search hits on the whole genome, in a close-up view or on a nucleotide level:
 
-http://www.sgn.cornell.edu/gbrowse/
+http://www.solgenomics.net/gbrowse/
 
 SGN's BLAST services have also been updated with the new datasets and are available from:
 
-http://www.sgn.cornell.edu/tools/blast/
+http://www.solgenomics.net/tools/blast/
 
 $project_acronym is committed to the continual improvement of the $organism genome annotation and actively encourages the plant community to contact us with new data, corrections and suggestions.
 
 Announcements of new releases, updates of data, tools, and other developments from $project_acronym can be found
 
-http://www.sgn.cornell.edu/
+http://www.solgenomics.net/
 
 Please send comments or questions to:
 
@@ -1328,7 +1328,7 @@ key          = SGN Unigenes
 category     = Genome data and reagents
 glyph        = segments
 stranded     = 1
-link         = http://sgn.cornell.edu/search/quick_search.pl?term=$name
+link         = http://solgenomics.net/search/quick_search.pl?term=$name
 citation     = This track shows regions of similarity with SGN Unigene (SGN-U) sequences.  (see <a href="http://www.ab.wur.nl/TomatoWiki/AnSgnUnigenes000">ITAG Wiki</a>)
 
 [augustus]
@@ -1409,6 +1409,7 @@ key          = SGN Marker Sequences
 category     = Genetic Loci
 stranded     = 1
 fgcolor      = black
+link         = http://solgenomics.net/search/quick_search.pl?term=$name
 bgcolor      = yellow
 stranded     = 1
 citation     = This track shows regions of similarity of the genomic sequence with known sequences associated with SGN genetic markers, as detected by GenomeThreader (see also <a href="http://www.ab.wur.nl/TomatoWiki/AnSgnMarkers000">ITAG Wiki</a>)
@@ -1424,7 +1425,7 @@ fgcolor      = black
 bgcolor      = black
 key          = Tiling BACs and Fosmids
 link         = /search/quick_search.pl?term=$name
-citation     = Shows the genome tiling path of BACs and Fosmids, provided by each sequencing center.  For an AGP view of tiling paths, see <a href="http://sgn.cornell.edu/sequencing/agp.pl">Tomato Assembly Display</a> on SGN.
+citation     = Shows the genome tiling path of BACs and Fosmids, provided by each sequencing center.  For an AGP view of tiling paths, see <a href="http://solgenomics.net/sequencing/agp.pl">Tomato Assembly Display</a> on SGN.
 |
   ;
   close $f;
