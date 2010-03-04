@@ -237,6 +237,7 @@ sub dump_data {
     my $dump_count = 0;
     foreach my $ctg (@$latest_seqs) {
         my $ctg_name = $ctg->{name};
+	### contig: $ctg_name
 	print '.' unless ++$dump_count % 100;
 
         #get the names of all the files we need
@@ -261,6 +262,7 @@ sub dump_data {
         }
         elsif( -s $go_tabular ) {
             $go_terms = get_go_terms_for_mrnas( $go_tabular );
+	    ### go terms: $go_terms
         }
 
         # fetch our human_readable_description if available
@@ -549,7 +551,6 @@ sub gff3_escape {
 # get all the gene models from renaming and dump them into the combi and models files
 sub add_functional_annotations {
   my ($gff3_line, $ontology_terms, $descriptions ) = @_;
-
   # currently only operate on mRNA features
   my ($type,$id) =
       $gff3_line =~ m(  \t
@@ -561,15 +562,20 @@ sub add_functional_annotations {
      or return $gff3_line;
 
   chomp $gff3_line;
+  ### Adding functional annotations...
+  ### type: $type
+  ### id: $id
 
   # add the human-readable desc if present
   if( my $desc_string = $descriptions->{$id}) {
       # add it to the gff3 string
+      ### desc: $desc_string
       $gff3_line .= ";functional_description=".uri_escape( $desc_string );
   }
 
   # add ontology terms if present
   if( my $terms = $ontology_terms->{$id} ) {
+      ### got terms: $terms
       $gff3_line .= ";Ontology_term=$_" for @$terms;
   }
 
@@ -668,7 +674,6 @@ sub collect_stats {
 			     );
   lock_keys(%stats);
 
-  #use Smart::Comments;
   #open the aggregated GFF3 file
   open my $combi_in, '<', $gen_files->{combi_genomic_gff3}->{file} or die "$! reading combi gff3 file\n";
   my $gene_length_accum = 0;
@@ -933,7 +938,6 @@ sub format_deflines {
 	    );
 
     my $line = '>'.$s->display_id.' '.$s->desc."\n".$s->seq."\n";
-    munge_identifiers( \$line ); #< REMOVEME
     $out_fh->print( $line );
   }
 }
@@ -1556,7 +1560,6 @@ sub copy_or_die {
   open my $in, $file or die "$! reading $file";
   eval {
     while(my $line = <$in> ){
-        munge_identifiers( \$line ); #< REMOVEME
         $fh->print($line);
     }
   }; if($EVAL_ERROR) {
@@ -1626,7 +1629,6 @@ sub get_go_terms_for_mrnas {
     while ( my $line = <$t> ) {
         # parse the line
         chomp $line;
-        munge_identifiers( \$line ); #< REMOVEME
 
         my ( $mrna_name, $go_nums ) = split /\s+/, $line, 2;
 	next unless $go_nums =~ /\d{4,}/;
