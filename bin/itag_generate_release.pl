@@ -1556,6 +1556,7 @@ sub copy_or_die {
   open my $in, $file or die "$! reading $file";
   eval {
     while(my $line = <$in> ){
+        $line =~ s/[[:cntrl:]]//g; #< remove any control chars
         $fh->print($line);
     }
   }; if($EVAL_ERROR) {
@@ -1573,6 +1574,7 @@ sub copy_gff3_or_die {
     while(<$in>) {
       #change the source column to be ITAG_ plus the analysis name
       my $result = $sub->($_);
+      $result =~ s/[[:cntrl:]]//g; #< remove any control chars
       $result =~ s/^\s*(\S+)\t\S+/$1\tITAG_$aname/;
       #check($result);
       for my $fh (@fh) {
@@ -1583,6 +1585,7 @@ sub copy_gff3_or_die {
     while(my $line = <$in>) {
       #change the source column to be ITAG_ plus the analysis name
       $line =~ s/^\s*(\S+)\t\S+/$1\tITAG_$aname/;
+      $line =~ s/[[:cntrl:]]//g; #< remove any control chars
       #check($line);
       for my $fh (@fh) {
 	$fh->print( $line );
