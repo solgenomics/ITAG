@@ -150,8 +150,9 @@ foreach (@required_analyses) {
 }
 
 #get a list of the contigs we'll be using, including their batch numbers
+print "finding sequences ...\n";
 my $latest_seqs = list_latest_seqs( $pipe, \@batchnums, \%a );
-print "releasing annotations for ".@$latest_seqs." sequences\n";
+print "releasing annotations for ".@$latest_seqs." sequences.\n";
 
 foreach my $ctg (@$latest_seqs) {
   #check that all the files we need are readable
@@ -170,14 +171,17 @@ dump_data( $release, $gen_files );
 my $stats = collect_stats( $gen_files );
 
 #write the readme file
+print "writing readme and GBrowse configuration ...\n";
 write_readme( $release, 0, $gen_files, $stats );
 write_gbrowse_genomic( $release );
 write_gbrowse_prot( $release );
 
 #and make the tarfile
+print "making release tarfile ...\n";
 $release->make_tarfile();
 
 #update the ITAG_current link in the target dir, if any
+print "updating symlink ...\n";
 update_itag_current_link($target_path);
 
 #and exit
@@ -220,10 +224,11 @@ sub dump_data {
     $gen_fh->{$_}->print( "##gff-version 3\n##feature-ontology $sofa_url\n" )
         foreach grep $gen_files->{$_}->{type} eq 'gff3', keys %{$gen_fh};
 
-    print "dumping data ... ";
+    print "dumping data...\n";
+    my $dump_count = 0;
     foreach my $ctg (@$latest_seqs) {
         my $ctg_name = $ctg->{name};
-	print "$ctg_name ";
+	print '.' unless ++$dump_count % 100;
 
         #get the names of all the files we need
         my (undef,$eug_prot,$eug_cds,$eug_cdna) = $a{renaming}->{obj}->files_for_seq( $ctg->{batch}, $ctg->{name} );
@@ -628,7 +633,7 @@ sub close_all {
 sub collect_stats {
   my ($gen_files) = @_;
 
-  print "collecting statistics...";
+  print "collecting statistics...\n";
 
   my %stats = map {$_=>''} qw(
 			      gene_cnt
@@ -759,8 +764,6 @@ sub collect_stats {
 #   while( my $feat = $functional_in->next_feature ) {
 #   }
   lock_hash(%stats);
-
-  print "done.\n";
 
   return \%stats;
 }
