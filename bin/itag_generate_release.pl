@@ -35,6 +35,9 @@ itag_generate_release.pl - script to generate a genome annotation release for IT
        Attempts to write them to release_dir/<conf_file>, relative to
        the given dir.  Does not overwrite other files;
 
+    -S just collect raw stats (from existing release files) and dump.
+       Mostly useful for debugging stat collection.
+
 =head1 MAINTAINER
 
 Robert Buels
@@ -84,7 +87,7 @@ use CXGN::Tools::Text qw/commify_number/;
 
 ### parse and validate command line args
 our %opt;
-getopts('d:p:b:PDG',\%opt) or pod2usage(1);
+getopts('d:p:b:PDGS',\%opt) or pod2usage(1);
 $opt{m} ||= 1_000_000;
 $opt{P} && $opt{D} and die "-P and -D are mutually exclusive\n";
 $opt{d} or pod2usage('must provide -d option');
@@ -104,6 +107,11 @@ my $release = CXGN::ITAG::Release->new( releasenum => $release_num,
 					devel => $opt{D},
 				      );
 
+# if -S was passed, just collect stats, write the readme, and exit
+if( $opt{S} ) {
+    die Dumper( collect_stats( $release ) );
+}
+
 # if -G was passed, we just write the gbrowse configs and exit
 if( $opt{G} ) {
   print "writing GBrowse configs and exiting.\n";
@@ -112,67 +120,16 @@ if( $opt{G} ) {
   exit;
 }
 
-# now open our ITAG pipeline, at the right version and base directory
-my $pipe = CXGN::ITAG::Pipeline->open( basedir => $opt{d},
-                                       ( $opt{p} ? (version => $opt{p}) : () ),
-				     )
-  or die "pipeline directory not found or not openable, do you need to specify a different -d or -p option?\n";
-
-#go through each batch, find the ones that have the sequences we need, make sure the eugene analysis is done for it
-
-#first, figure out which batch number we're including
-my @batchnums = $pipe->list_batches; #< list all batches
-if( $opt{b} ) { #< if we got a -b option, parse it and use it to restrict the list
-  @batchnums = restrict_batch_numbers( $opt{b}, @batchnums );
-}
-
-# convenient hash of all the analysis objects
-my %a =
-  map {
-    my $a = $pipe->analysis($_)
-      or die "'$_' analysis not found in pipeline version ".$pipe->version.". Aborting.\n";
-    ( $_ => {name => $_,  obj => $a} )
-  } $pipe->list_analyses;
-
-# flag which analyses are required to be done in order for a batch to
-# be included in the release
-my @required_analyses = ( #( map $_->{name}, grep {$_->{name} =~ /^blastp_/i} values %a), #< all the blastp analyses are required
-			  'renaming',
-			  'trnascanse',
-			  'sgn_markers',
-			  'infernal',
-			  'transcripts_sol',
-			  'transcripts_tomato',
-			);
-foreach (@required_analyses) {
-  $a{$_} or die "unknown analysis $_";
-  $a{$_}->{required} = 1;
-}
-
-#get a list of the contigs we'll be using, including their batch numbers
-print "finding sequences ...\n";
-my $latest_seqs = list_latest_seqs( $pipe, \@batchnums, \%a );
-print "releasing annotations for ".@$latest_seqs." sequences.\n";
-
-foreach my $ctg (@$latest_seqs) {
-  #check that all the files we need are readable
-  -r or die "$_ file not readable\n" foreach ( $a{renaming}->{obj}->files_for_seq( $ctg->{batch}, $ctg->{name} ),
-					       $a{seq}->{obj}->files_for_seq(    $ctg->{batch}, $ctg->{name} ),
-					     );
-}
-
 ###### MAKE OUTPUT DIRECTORY AND OPEN OUTPUT FILES
 
-my $gen_files = $release->get_all_files;
-
-dump_data( $release, $gen_files );
+dump_data( $release );
 
 #now collect statistics about this release to use in the README file
-my $stats = collect_stats( $gen_files );
+my $stats = collect_stats( $release );
 
 #write the readme file
 print "writing readme and GBrowse configuration ...\n";
-write_readme( $release, 0, $gen_files, $stats );
+write_readme( $release, 0, $stats );
 write_gbrowse_genomic( $release );
 write_gbrowse_prot( $release );
 
@@ -195,7 +152,59 @@ sub munge_identifiers {
 
 # for each contig, write the appropriate lines to the output files
 sub dump_data {
-    my ( $release, $gen_files ) = @_;
+    my ( $release ) = @_;
+    my $gen_files = $release->get_all_files;
+
+    # now open our ITAG pipeline, at the right version and base directory
+    my $pipe = CXGN::ITAG::Pipeline->open( basedir => $opt{d},
+                                           ( $opt{p} ? (version => $opt{p}) : () ),
+                                          )
+        or die "pipeline directory not found or not openable, do you need to specify a different -d or -p option?\n";
+
+    # go through each batch, find the ones that have the sequences we
+    # need, make sure the eugene analysis is done for it
+
+    #first, figure out which batch number we're including
+    my @batchnums = $pipe->list_batches; #< list all batches
+    if ( $opt{b} ) {            #< if we got a -b option, parse it and use it to restrict the list
+        @batchnums = restrict_batch_numbers( $opt{b}, @batchnums );
+    }
+
+    # convenient hash of all the analysis objects
+    my %a =
+        map {
+            my $a = $pipe->analysis($_)
+                or die "'$_' analysis not found in pipeline version ".$pipe->version.". Aborting.\n";
+            ( $_ => {name => $_,  obj => $a} )
+        } $pipe->list_analyses;
+
+    # flag which analyses are required to be done in order for a batch to
+    # be included in the release
+    my @required_analyses = (
+        #( map $_->{name}, grep {$_->{name} =~ /^blastp_/i} values %a), #< all the blastp analyses are required
+        'renaming',
+        'trnascanse',
+        'sgn_markers',
+        'infernal',
+        'transcripts_sol',
+        'transcripts_tomato',
+       );
+    foreach (@required_analyses) {
+        $a{$_} or die "unknown analysis $_";
+        $a{$_}->{required} = 1;
+    }
+
+    #get a list of the contigs we'll be using, including their batch numbers
+    print "finding sequences ...\n";
+    my $latest_seqs = list_latest_seqs( $pipe, \@batchnums, \%a );
+    print "releasing annotations for ".@$latest_seqs." sequences.\n";
+
+    foreach my $ctg (@$latest_seqs) {
+        #check that all the files we need are readable
+        -r or die "$_ file not readable\n" foreach ( $a{renaming}->{obj}->files_for_seq( $ctg->{batch}, $ctg->{name} ),
+                                                     $a{seq}->{obj}->files_for_seq(    $ctg->{batch}, $ctg->{name} ),
+                                                    );
+    }
 
     # move build directory to <build>.prev if present, and delete any old .prev
     if(-d $release->dir ) {
@@ -631,7 +640,8 @@ sub close_all {
 #go through all the files in the release, collect statistics about them,
 #return it as a locked hashref
 sub collect_stats {
-  my ($gen_files) = @_;
+  my ($release) = @_;
+  my $gen_files = $release->get_all_files;
 
   print "collecting statistics...\n";
 
@@ -922,7 +932,9 @@ sub format_deflines {
 
 #write the readme file
 sub write_readme {
-  my ( $release, $ncbi_tax_id, $gen_files, $stats ) = @_;
+  my ( $release, $ncbi_tax_id, $stats ) = @_;
+
+  my $gen_files = $release->get_all_files;
 
   $ncbi_tax_id ||= 0; #or die "must pass ncbi tax id as second argument to write_readme()\n";
   my $organism = 'Tomato';
