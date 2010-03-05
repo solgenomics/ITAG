@@ -89,7 +89,7 @@ use CXGN::Tools::Text qw/commify_number/;
 
 ### parse and validate command line args
 our %opt;
-getopts('d:p:b:PDGS',\%opt) or pod2usage(1);
+getopts('d:p:b:PDGSR',\%opt) or pod2usage(1);
 $opt{m} ||= 1_000_000;
 $opt{P} && $opt{D} and die "-P and -D are mutually exclusive\n";
 $opt{d} or pod2usage('must provide -d option');
@@ -98,7 +98,8 @@ my $release_num = $opt{D} ? 0 : shift @ARGV;
 my $target_path = shift @ARGV or pod2usage();
 ($release_num + 0 == $release_num && $release_num >= 0) or die "release_num argument must be numeric\n";
 -d $target_path or die "target path $target_path does not exist\n";
--w $target_path or die "target path $target_path is not writable\n" unless $opt{G}; #< do not test dir writability if -G passed, since we won't actually be writing to this dir if we're just writing gbrowse confs.
+-w $target_path or die "target path $target_path is not writable\n"
+    unless $opt{G} || $opt{S} || $opt{R};
 
 # set the root dir to our target directory so the object will make it in the right place#
 CXGN::ITAG::Release->releases_root_dir($target_path);
@@ -659,6 +660,7 @@ sub collect_stats {
 			      gene_model_cnt
 			      gene_mrna_counts
                               gene_length_avg
+                              mrna_with_human_desc
 			      genes_with_splice_variants_pct
 			      genes_with_splice_variants_cnt
                               genes_with_ontology_terms
@@ -700,6 +702,9 @@ sub collect_stats {
 	my ($parent) = $line =~ /Parent=gene:([^;\n]+)/ or die "cannot parse parent from gff3 line:\n$line\n";
 	### parent: $parent
         $stats{gene_mrna_counts}{$parent}++;
+	if( $line =~ /functional_description=/ ) {
+	    $stats{mrna_with_human_desc}++;
+	}
         if( my @terms = $line =~ /Ontology_term=([^;\n]+)/g ) {
             $stats{genes_with_ontology_terms}++;
             $ontology_terms_seen{$_} = 1 for @terms;
@@ -951,6 +956,8 @@ sub write_readme {
       $fmt_stats{genes_with_splice_variants_pct} = '';
   }
 
+  $fmt_stats{mrna_with_human_desc} = 'all' if $fmt_stats{mrna_with_human_desc} eq $fmt_stats{gene_model_cnt};
+
   lock_hash(%fmt_stats);
 
   my $file_descriptions = file_descriptions($release,$gen_files);
@@ -975,8 +982,6 @@ sub write_readme {
 
   my $date_str = POSIX::strftime( "%B %e, %Y", gmtime() );
 
-  $fmt_stats{mrna_with_human_desc} = 'all' if $fmt_stats{mrna_with_human_desc} eq $fmt_stats{gene_model_cnt};
-
   my $readme_text = <<EOT;
 $release_tag $organism Genome release
 
@@ -984,7 +989,7 @@ The $project_name project ($project_acronym) is pleased to announce the release 
 
 The $release_tag release contains $fmt_stats{gene_cnt} genes in all, with $fmt_stats{gene_model_cnt} gene models. Average gene length is $fmt_stats{gene_length_avg} base pairs.  Currently, $fmt_stats{genes_with_splice_variants_cnt} genes$fmt_stats{genes_with_splice_variants_pct} have annotated splice variants.  $fmt_stats{mapped_ests_cnt} cDNA and EST sequences mapped to the genome, resulting in $fmt_stats{protein_coding_with_cdna_or_est_cnt} protein coding genes derived at least partly from supporting cDNA and/or EST alignments and thus $fmt_stats{protein_coding_without_cdna_or_est_cnt} protein coding genes not utilizing transcript support.  With respect to protein homology, $fmt_stats{protein_coding_with_prot_cnt} gene models used homology to known proteins in their construction, while $fmt_stats{protein_coding_without_prot_cnt} did not.
 
-For functional annotation, $fmt_stats{genes_with_ontology_terms} genome features have Gene Ontology terms associated, with a total of $fmt_stats{unique_ontology_terms} different ontology terms represented.  In addition, $fmt_stats{genes_with_human_desc} gene models/transcripts are annotated with best-guess text descriptions of their function.
+For functional annotation, $fmt_stats{genes_with_ontology_terms} genome features have Gene Ontology terms associated, with a total of $fmt_stats{unique_ontology_terms} different ontology terms represented.  In addition, $fmt_stats{mrna_with_human_desc} gene models/transcripts are annotated with best-guess text descriptions of their function.
 
 Files included in this release:
 
@@ -1013,7 +1018,7 @@ http://www.solgenomics.net/tools/blast/
 
 $project_acronym is committed to the continual improvement of the $organism genome annotation and actively encourages the plant community to contact us with new data, corrections and suggestions.
 
-Announcements of new releases, updates of data, tools, and other developments from $project_acronym can be found
+Announcements of new releases, updates of data, tools, and other developments from $project_acronym can be found on SGN:
 
 http://www.solgenomics.net/
 
@@ -1042,7 +1047,7 @@ EOT
 
 sub wrap_long_lines {
   my $text = shift;
-  my $length = shift || 80;
+  my $length = shift || 72;
   $length--;
   $text =~
     s{
