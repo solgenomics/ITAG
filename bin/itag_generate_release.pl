@@ -989,7 +989,7 @@ sub write_readme {
   my $release_dirname = $release->dir_basename;
   my $release_tag     = $release->release_tag;
 
-  my $date_str = POSIX::strftime( "%A %B %e, %Y", gmtime() );
+  my $date_str = POSIX::strftime( "%B %e, %Y", gmtime() );
 
   my $readme_text = <<EOT;
 $release_tag $organism Genome release
