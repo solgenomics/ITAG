@@ -1030,7 +1030,7 @@ $file_descriptions
 
 Sequences and annotations can also be viewed and searched on SGN:
 
-http://www.solgenomics.net/gbrowse/
+http://solgenomics.net/gbrowse/
 
 The fully annotated chromosome sequences in GFF version 3 format, along with Fasta files of cDNA, CDS, genomic and protein sequences, and lists of genes are available from the SGN ftp site at:
 
@@ -1047,13 +1047,13 @@ http://www.solgenomics.net/gbrowse/
 
 SGN's BLAST services have also been updated with the new datasets and are available from:
 
-http://www.solgenomics.net/tools/blast/
+http://solgenomics.net/tools/blast/
 
 $project_acronym is committed to the continual improvement of the $organism genome annotation and actively encourages the plant community to contact us with new data, corrections and suggestions.
 
 Announcements of new releases, updates of data, tools, and other developments from $project_acronym can be found on SGN:
 
-http://www.solgenomics.net/
+http://solgenomics.net/
 
 Please send comments or questions to:
 
