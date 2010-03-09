@@ -60,6 +60,7 @@ my $build = Module::Build->new(
 	'Path::Class::File' => 0,
 	'Scalar::Util' => 0,
 	'Storable' => 0,
+	'Tie::Function' => 0,
 	'URI::Escape' => 0,
     },
 

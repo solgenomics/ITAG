@@ -72,6 +72,7 @@ use Hash::Util qw/ lock_hash lock_keys /;
 use File::Copy;
 use File::Basename;
 use File::Temp qw/tempfile/;
+use Tie::Function;
 use URI::Escape;
 
 use Data::Dumper;
@@ -990,6 +991,18 @@ sub write_readme {
 
   my $date_str = POSIX::strftime( "%B %e, %Y", gmtime() );
 
+  # string-format a frequency as "number (pct %)" relative to the given base count
+  my $fmt_pct = sub {
+      my $s = my $n = shift;
+      my $base = shift;
+      s/,//g for $n, $base;
+      my $pct = sprintf('%0.1f',$n/$base*100);
+      return "$s ($pct%)";
+  };
+  # format one of the gene model counts
+  tie my %fmt_gm, 'Tie::Function' => sub {
+      $fmt_pct->( $fmt_stats{+shift}, $fmt_stats{'gene_model_cnt'} );
+  };  
 
   my $readme_text = <<EOT;
 $release_tag $organism Genome release
@@ -998,16 +1011,16 @@ The $project_name project ($project_acronym) is pleased to announce the release 
 
 The $release_tag release contains $fmt_stats{gene_cnt} genes in all, with $fmt_stats{gene_model_cnt} gene models. Average gene length is $fmt_stats{gene_length_avg} base pairs.  Currently, $fmt_stats{genes_with_splice_variants_cnt} genes$fmt_stats{genes_with_splice_variants_pct} have annotated splice variants.  $fmt_stats{mapped_ests_cnt} cDNA and EST sequences were aligned to the genome.  The table below summarizes the numbers of gene models utilizing protein and/or EST/cDNA supporting:
 
-Description                                              | Count
------------------------------------------------------------------------
-Gene models with cDNA homology support                   | $fmt_stats{protein_coding_with_supporting_cdna}
-Gene models with protein homology support                | $fmt_stats{protein_coding_with_supporting_prot}
-Gene models without cDNA homology support                | $fmt_stats{protein_coding_without_supporting_cdna}
-Gene models without protein homology support             | $fmt_stats{protein_coding_without_supporting_prot}
-Gene models with both cDNA and protein homology support  | $fmt_stats{protein_coding_with_supporting_cdna_and_protein}
-Gene models with only cDNA homology support              | $fmt_stats{protein_coding_with_supporting_only_cdna}
-Gene models with only protein homology support           | $fmt_stats{protein_coding_with_supporting_only_protein}
-Gene models with no homology support                     | $fmt_stats{protein_coding_with_supporting_none}
+Description                                     |   Count
+-----------------------------------------------------------------
+Gene models with cDNA homology support          | $fmt_gm{protein_coding_with_supporting_cdna}
+Gene models without cDNA homology support       | $fmt_gm{protein_coding_without_supporting_cdna}
+Gene models with protein homology support       | $fmt_gm{protein_coding_with_supporting_prot}
+Gene models without protein homology support    | $fmt_gm{protein_coding_without_supporting_prot}
+Gene models with both cDNA and protein support  | $fmt_gm{protein_coding_with_supporting_cdna_and_protein}
+Gene models with only cDNA homology support     | $fmt_gm{protein_coding_with_supporting_only_cdna}
+Gene models with only protein homology support  | $fmt_gm{protein_coding_with_supporting_only_protein}
+Gene models with no homology support            | $fmt_gm{protein_coding_with_supporting_none}
 
 With respect to functional annotation, $fmt_stats{genes_with_ontology_terms} genome features have ontology (primarily Gene Ontology) terms associated, with a total of $fmt_stats{unique_ontology_terms} different ontology terms represented.  In addition, $fmt_stats{mrna_with_human_desc} gene models/transcripts are annotated with best-guess text descriptions of their function.
 
