@@ -37,7 +37,7 @@ intergenic_length
 
 exons_per_gene_model
 
-ontology_terms_per_mrna
+GO_terms_per_mrna
 
 =head2  L<Statistics::Descriptive::Sparse> attributes
 
@@ -54,6 +54,8 @@ mapped_ests
 gene_models
 
 gene_models_with_human_desc
+
+gene_models_with_GO_terms
 
 genomic_bases
 
@@ -73,7 +75,7 @@ protein_coding_with_supporting_only_protein
 
 protein_coding_with_supporting_none
 
-unique_ontology_terms
+unique_GO_terms
 
 =cut
 
@@ -90,7 +92,7 @@ has $_->[0] => (
     [qw[ exon_length              full ]],
     [qw[ intron_length            full ]],
     [qw[ exons_per_gene_model     full ]],
-    [qw[ ontology_terms_per_mrna  full ]];
+    [qw[ GO_terms_per_mrna        full ]];
 
 # init some counters for simpler things
 has $_ => (
@@ -105,6 +107,7 @@ has $_ => (
              mapped_ests
              gene_models
              gene_models_with_human_desc
+             gene_models_with_GO_terms
 
              genomic_bases
 
@@ -123,7 +126,7 @@ has $_ => (
     is      => 'rw',
     #isa     => 'Int',
     default => 0,
-   ) for qw( unique_ontology_terms
+   ) for qw( unique_GO_terms
              genes_with_splice_variants
            );
 
@@ -207,7 +210,7 @@ sub _analyze_genomic_gff3 { # process the genomic gff3
     my $self = shift;
 
     #prepare vars for gathering stats
-    my %ontology_terms_seen;
+    my %go_terms_seen;
     my $previous_exon_end = {};
     my $previous_gene_end = {};
     my $previous_gene_exon_count = {};
@@ -263,12 +266,13 @@ sub _analyze_genomic_gff3 { # process the genomic gff3
                 if ( $line =~ /functional_description=/ ) {
                     $self->inc_gene_models_with_human_desc;
                 }
-                if ( my @terms = $line =~ /Ontology_term=([^;\n]+)/g ) {
-                    $self->add_ontology_terms_per_mrna( scalar @terms );
-                    $ontology_terms_seen{$_} = 1 for @terms;
-                    ### terms: @terms
+                if ( my @go_terms = $line =~ /Ontology_term=([^;\n]+)/g ) {
+                    $self->inc_gene_models_with_GO_terms;
+                    $self->add_GO_terms_per_mrna( scalar @go_terms );
+                    $go_terms_seen{$_} = 1 for @go_terms;
+                    ### terms: @go_terms
                 } else {
-                    $self->add_ontology_terms_per_mrna( 0 );
+                    $self->add_GO_terms_per_mrna( 0 );
                 }
             }
         } elsif ( $src =~ /^itag_transcripts_/i ) {
@@ -285,7 +289,7 @@ sub _analyze_genomic_gff3 { # process the genomic gff3
     close $combi_in;
 
     # calculate number of unique ontology terms
-    $self->unique_ontology_terms( scalar keys %ontology_terms_seen );
+    $self->unique_GO_terms( scalar keys %go_terms_seen );
 
     ## aggregate the splice variant statistics
     # currently just counting how many genes have been annotated with splice variants

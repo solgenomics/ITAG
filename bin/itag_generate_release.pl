@@ -796,17 +796,26 @@ sub write_readme {
   my $readme_template = <<'EOT';
 [%- USE Comma -%]
 [%- BLOCK based_count -%]
-[% num | format('%6d') | comma %] ([% num / base * 100 | format('%2.1f') %]%)
+[% num | comma %] ([% num / base * 100 | format('%2.1f') | format('%5s') %]%)
 [%- END -%]
 [%- BLOCK stat_sparse -%]
-  [% label %]:
-     Min:    [% stat.min | comma %]
-     Max:    [% stat.max | comma %]
-     Mean:   [% stat.mean | format('%0.1f') | comma %]
+   [% label %]
+  -------------------------------------------------------
+     Min     [% stat.min | comma %]
+     Max     [% stat.max | comma %]
+     Range   [% stat.max-stat.min | comma %]
+     Mean    [% stat.mean | format('%0.1f') | comma %]
+     StdDev  [% stat.standard_deviation | format('%0.1f') | comma %]
 [%- END -%]
 [%- BLOCK stat_full -%]
 [% PROCESS stat_sparse %]
-     Median: [% stat.median | comma %]
+     Median  [% stat.median | comma %]
+     Frequency Distribution:
+            Bin  Frequency
+     [% f=stat.frequency_distribution_ref(bins || 8);
+        FOREACH bin IN f.keys.nsort -%]
+[% bin | format('%0.0f') | comma | format('%10s') %]  [% f.$bin | comma | format('%-10s') %]
+     [% END -%]
 [%- END -%]
 [%- BLOCK megabases -%]
 [% bp / 1000000 | format('%0.0f') | comma %] Mbp
@@ -814,92 +823,80 @@ sub write_readme {
 [% release_tag %] [% organism %] Genome Release
 
 Contents:
-  0. Introduction
-  1. Files in this release
-  2. Statistics
-  3. Further Information
+  1. Introduction
+  2. Files in this release
+  3. Links and other resources
+  4. Release statistics
 
-== 0. Introduction ==
+== 1. Introduction ==
 
-The [% project_name %] project ([% project_acronym %]) is pleased to announce the [% release_tag %] release of the official [% organism %] genome annotation ([% release_tag %]), covering [% s.genomic_bases / genome_size * 100 | format('%0.0f') %]% of the estimated [% INCLUDE megabases bp=genome_size %] genome, annotated with [% s.gene_models | comma %] gene models.  This release file set was generated on [% date_str %].
+The [% project_name %] ([% project_acronym %]) is pleased to announce the [% release_tag %] release of the official [% organism %] genome annotation ([% release_tag %]), covering [% s.genomic_bases / genome_size * 100 | format('%0.0f') %]% of the estimated [% INCLUDE megabases bp=genome_size %] genome, with [% s.gene_models | comma %] gene models.  This release file set was generated on [% date_str %].
 
-== 1. Files in this release ==
+Please send comments or questions about these annotations to: itag\@sgn.cornell.edu
+
+== 2. Files in this release ==
 
 [% file_descriptions %]
 
-== 2. Release statistics ==
+== 3. Links and other resources ==
 
-2.1 Genome Coverage
+Sequences and annotations can also be viewed and searched on SGN: http://solgenomics.net/gbrowse/
 
-  Estimated genome size: [% INCLUDE megabases bp=genome_size %]
+The fully annotated chromosome sequences in GFF version 3 format, along with Fasta files of cDNA, CDS, genomic and protein sequences, and lists of genes are available from the SGN ftp site at: ftp://ftp.solgenomics.net/tomato_genome/annotation/[% release_dirname %]/
+
+For those who are not familiar with the relatively new GFF3 format, the format specification can be found here: http://www.sequenceontology.org/gff3.shtml
+
+A graphical display of the [% organism %] sequence and annotation can be viewed using SGN's genome browser. Browse the chromosomes, search for names or short sequences and view search hits on the whole genome, in a close-up view or on a nucleotide level: http://solgenomics.net/gbrowse/
+
+SGN's BLAST services have also been updated with this dataset, available at: http://solgenomics.net/tools/blast/
+
+[% project_acronym %] is committed to the continual improvement of the [% organism %] genome annotation and actively encourages the community to contact us with new data, corrections and suggestions.
+
+Announcements of new releases, updates of data, tools, and other developments from [% project_acronym %] can be found on SGN: http://solgenomics.net/
+
+== 4. Release statistics ==
+
+4.1 Genome Coverage
+with 
+  Estimated genome size:      [% INCLUDE megabases bp=genome_size %]
   Size of annotated assembly: [% INCLUDE megabases bp=s.genomic_bases %]
-  Estimated completeness: [% s.genomic_bases / genome_size * 100 | format('%0.0f') %]%
+  Est. proportion of genome:  [% s.genomic_bases / genome_size * 100 | format('%0.0f') %]%
 
-2.2 Genes and Gene Models
+4.2 Structural Annotation
 
   Gene model count: [% s.gene_models | comma %]
-[% INCLUDE stat_full stat=s.gene_model_length       label='Gene model length (bp)'                    %]
-[% INCLUDE stat_full stat=s.intergenic_length       label='Intergenic distance (bp)'                  %]
-[% INCLUDE stat_full stat=s.ontology_terms_per_mrna label='Ontology terms associated, per gene model' %]
-  Unique ontology terms associated: [% s.unique_ontology_terms | comma %]
+  Exon count:       [% s.exon_length.count | comma %]
+  Intron count:     [% s.intron_length.count | comma %]
 
-  Genes with annotated splice variants: [% s.genes_with_splice_variants | comma %]
-  Gene models with human-readable functional description: [% s.gene_models_with_human_desc | comma %]
+[% INCLUDE stat_full stat=s.gene_model_length    label='Gene model length (bp)'   %]
+[% INCLUDE stat_full stat=s.intergenic_length    label='Intergenic distance (bp)' %]
+[% INCLUDE stat_full stat=s.exons_per_gene_model label='Exons per gene model'     %]
+[% INCLUDE stat_full stat=s.exon_length          label='Exon length (bp)'         %]
+[% INCLUDE stat_full stat=s.intron_length        label='Intron length (bp)'       %]
 
-2.3 Exons and Introns
+4.3 Functional Annotation
 
-  Exon count: [% s.exon_length.count | comma %]
-[% INCLUDE stat_full stat=s.exon_length          label='Exon length (bp)'     %]
-[% INCLUDE stat_full stat=s.exons_per_gene_model label='Exons per gene model' %]
+  Gene models with GO terms:   [% INCLUDE based_count num=s.gene_models_with_GO_terms base=s.gene_models %]
+  Unique GO terms associated:  [% s.unique_GO_terms | comma %]
+  Genes with splice variants:  [% s.genes_with_splice_variants | comma %]
+  Gene models with functional
+  description text:            [% INCLUDE based_count num=s.gene_models_with_human_desc base=s.gene_models %]
 
-  Intron count: [% s.intron_length.count | comma %]
-[% INCLUDE stat_full stat=s.intron_length        label='Intron length (bp)'   %]
+[% INCLUDE stat_full stat=s.GO_terms_per_mrna label='Gene Ontology terms associated, per gene model' -%]
 
-2.4 Gene model supporting evidence
+4.4 Gene model supporting evidence
 
-  ESTs aligned to the genome: [% s.mapped_ests | comma %]
+  ESTs/cDNAs aligned to the genome: [% s.mapped_ests | comma %]
 
-  Gene models with cDNA homology support:          [% INCLUDE based_count num=s.protein_coding_with_supporting_cdna             base=s.gene_models %]
-  Gene models without cDNA homology support:       [% INCLUDE based_count num=s.protein_coding_without_supporting_cdna          base=s.gene_models %]
-  Gene models with protein homology support:       [% INCLUDE based_count num=s.protein_coding_with_supporting_prot             base=s.gene_models %]
-  Gene models without protein homology support:    [% INCLUDE based_count num=s.protein_coding_without_supporting_prot          base=s.gene_models %]
-  Gene models with both cDNA and protein support:  [% INCLUDE based_count num=s.protein_coding_with_supporting_cdna_and_protein base=s.gene_models %]
-  Gene models with only cDNA homology support:     [% INCLUDE based_count num=s.protein_coding_with_supporting_only_cdna        base=s.gene_models %]
-  Gene models with only protein homology support:  [% INCLUDE based_count num=s.protein_coding_with_supporting_only_protein     base=s.gene_models %]
-  Gene models with no homology support:            [% INCLUDE based_count num=s.protein_coding_with_supporting_none             base=s.gene_models %]
+  Gene models with cDNA homology support:         [% INCLUDE based_count num=s.protein_coding_with_supporting_cdna             base=s.gene_models  | format('%17s') %]
+  Gene models without cDNA homology support:      [% INCLUDE based_count num=s.protein_coding_without_supporting_cdna          base=s.gene_models  | format('%17s') %]
+  Gene models with protein homology support:      [% INCLUDE based_count num=s.protein_coding_with_supporting_prot             base=s.gene_models  | format('%17s') %]
+  Gene models without protein homology support:   [% INCLUDE based_count num=s.protein_coding_without_supporting_prot          base=s.gene_models  | format('%17s') %]
 
-3. Further information
-
-Sequences and annotations can also be viewed and searched on SGN:
-
-http://solgenomics.net/gbrowse/
-
-The fully annotated chromosome sequences in GFF version 3 format, along with Fasta files of cDNA, CDS, genomic and protein sequences, and lists of genes are available from the SGN ftp site at:
-
-ftp://ftp.solgenomics.net/tomato_genome/annotation/[% release_dirname %]/
-
-For those who are not familiar with the relatively new GFF3 format,
-the format specification can be found here:
-
-http://www.sequenceontology.org/gff3.shtml
-
-A graphic display of the $organism sequence and annotation can be viewed using SGN's genome browser. Browse the chromosomes, search for names or short sequences and view search hits on the whole genome, in a close-up view or on a nucleotide level:
-
-http://solgenomics.net/gbrowse/
-
-SGN's BLAST services have also been updated with this dataset, available at
-
-http://solgenomics.net/tools/blast/
-
-$project_acronym is committed to the continual improvement of the $organism genome annotation and actively encourages the plant community to contact us with new data, corrections and suggestions.
-
-Announcements of new releases, updates of data, tools, and other developments from $project_acronym can be found on SGN:
-
-http://solgenomics.net/
-
-Please send comments or questions to:
-
-itag\@sgn.cornell.edu
+  Gene models with both cDNA and protein support: [% INCLUDE based_count num=s.protein_coding_with_supporting_cdna_and_protein base=s.gene_models  | format('%17s') %]
+  Gene models with only cDNA homology support:    [% INCLUDE based_count num=s.protein_coding_with_supporting_only_cdna        base=s.gene_models  | format('%17s') %]
+  Gene models with only protein homology support: [% INCLUDE based_count num=s.protein_coding_with_supporting_only_protein     base=s.gene_models  | format('%17s') %]
+  Gene models with no homology support:           [% INCLUDE based_count num=s.protein_coding_with_supporting_none             base=s.gene_models  | format('%17s') %]
 
 EOT
 
@@ -912,7 +909,7 @@ EOT
         release_tag       => $release->release_tag,
         date_str          => POSIX::strftime( "%B %e, %Y", gmtime() ),
         organism          => 'Tomato',
-        genome_size       => 850_000_000,
+        genome_size       => 930_000_000,
         project_name      => 'International Tomato Annotation Group',
         project_acronym   => 'ITAG',
         file_descriptions => file_descriptions($release,$gen_files),
@@ -920,6 +917,7 @@ EOT
        },
       \$readme_text,
      ) || die $tt->error;
+  warn $tt->error if $tt->error;
 
   # do some silliness to correct the word wrapping of the text so it
   # comes out looking nice
