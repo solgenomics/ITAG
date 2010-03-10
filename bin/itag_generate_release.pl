@@ -832,11 +832,9 @@ Contents:
 
 The [% project_name %] ([% project_acronym %]) is pleased to announce the [% release_tag %] release of the official [% organism %] genome annotation ([% release_tag %]), covering approximately [% s.genomic_bases / genome_size * 100 | format('%0.0f') %]% of the genome, with [% s.gene_models | comma %] gene models.  This release file set was generated on [% date_str %].
 
-In this release, [% INCLUDE based_count num=s.protein_coding_with_supporting_cdna_or_protein base=s.gene_models %] of the gene models are supported by homology to either existing ESTs or cDNA sequences, with [% INCLUDE based_count num=s.protein_coding_with_supporting_cdna_and_protein base=s.gene_models %] supported by both.
+In this release, [% INCLUDE based_count num=s.protein_coding_with_supporting_cdna_or_protein base=s.gene_models %] of the gene models are supported by homology to either existing ESTs or cDNA sequences, with [% INCLUDE based_count num=s.protein_coding_with_supporting_cdna_and_protein base=s.gene_models %] supported by both.  [% IF s.gene_models_with_human_desc == s.gene_models; THEN %]All[% ELSE; INCLUDE based_count num=s.gene_models_with_human_desc base=s.gene_models; END %] of the gene models are annotated with best-guess text descriptions of their function, and [% INCLUDE based_count num=s.gene_models_with_GO_terms base=s.gene_models %] have associated Gene Ontology terms describing their function.  See section 4 for more statistics describing this release.
 
-[% IF s.gene_models_with_human_desc == s.gene_models; THEN %]All[% ELSE; INCLUDE based_count num=s.gene_models_with_human_desc base=s.gene_models; END %] of the gene models are annotated with best-guess text descriptions of their function, and [% INCLUDE based_count num=s.gene_models_with_GO_terms base=s.gene_models %] have associated Gene Ontology terms describing their function.
-
-Please send comments or questions about these annotations to: itag\@sgn.cornell.edu
+Please send comments or questions about these annotations to: itag@sgn.cornell.edu
 
 == 2. Files in this release ==
 
@@ -880,7 +878,7 @@ Announcements of new releases, updates of data, tools, and other developments fr
 
 4.3 Functional Annotation
 
-  Gene models with GO terms:   [% INCLUDE based_count num=s.gene_models_with_GO_terms base=s.gene_models %]o
+  Gene models with GO terms:   [% INCLUDE based_count num=s.gene_models_with_GO_terms base=s.gene_models %]
   Unique GO terms associated:  [% s.unique_GO_terms | comma %]
   Genes with splice variants:  [% s.genes_with_splice_variants | comma %]
   Gene models with functional
