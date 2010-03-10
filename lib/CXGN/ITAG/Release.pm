@@ -14,6 +14,7 @@ use CXGN::Tools::Class qw/parricide/;
 use CXGN::Tools::Run;
 use CXGN::ITAG::Config;
 use CXGN::ITAG::Tools qw/ parse_release_dirname /;
+use CXGN::ITAG::Release::Statistics;
 
 =head1 NAME
 
@@ -684,6 +685,20 @@ sub is_current_release {
   return 1 if $i1 == $i2;
 
   return 0;
+}
+
+
+=head2 calculate_statistics
+
+Calculate and return a L<CXGN::ITAG::Release::Statistics> object for
+this ITAG release.
+
+  my $stats = $release->calculate_statistics
+
+=cut
+
+sub calculate_statistics {
+    CXGN::ITAG::Release::Statistics->new( release => +shift );
 }
 
 

@@ -35,8 +35,7 @@ itag_generate_release.pl - script to generate a genome annotation release for IT
        Attempts to write them to release_dir/<conf_file>, relative to
        the given dir.  Does not overwrite other files;
 
-    -S just collect raw stats (from existing release files) and dump.
-       Mostly useful for debugging stat collection.
+    -S use saved statistics file if available
 
     -R just collect stats and write a new README for the release
 
@@ -64,15 +63,17 @@ use Carp;
 use FindBin;
 use Getopt::Std;
 use Pod::Usage;
-
 use POSIX;
+use Storable qw/ nstore retrieve /;
 
 use IO::File;
 use Hash::Util qw/ lock_hash lock_keys /;
 use File::Copy;
 use File::Basename;
 use File::Temp qw/tempfile/;
+use Statistics::Descriptive;
 use Tie::Function;
+use Template;
 use URI::Escape;
 
 use Data::Dumper;
@@ -111,13 +112,16 @@ my $release = CXGN::ITAG::Release->new( releasenum => $release_num,
 					devel => $opt{D},
 				      );
 
-# if -S was passed, just collect stats, write the readme, and exit
-if( $opt{S} ) {
-    die Dumper( collect_stats( $release ) );
-}
+
 # if -R, collect stats and write a new readme
-if( $opt{R} ) {
-    my $stats = collect_stats( $release );
+if( $opt{R} || $opt{S} ) {
+    #now collect statistics about this release to use in the README file
+    my $saved_stat_file = File::Spec->catfile( $release->dir, 'statistics.dat' );
+    my $stats = $opt{S} && -f $saved_stat_file
+        ? retrieve( $saved_stat_file )    :
+          $release->calculate_statistics;
+    nstore( $stats, $saved_stat_file );
+
     write_readme( $release, 0, $stats );
     exit;
 }
@@ -134,7 +138,7 @@ if( $opt{G} ) {
 dump_data( $release );
 
 #now collect statistics about this release to use in the README file
-my $stats = collect_stats( $release );
+my $stats = $release->calculate_statistics;
 
 #write the readme file
 print "writing readme and GBrowse configuration ...\n";
@@ -648,150 +652,6 @@ sub close_all {
   }
 }
 
-#go through all the files in the release, collect statistics about them,
-#return it as a locked hashref
-sub collect_stats {
-  my ($release) = @_;
-  my $gen_files = $release->get_all_files;
-
-  print "collecting statistics...\n";
-
-  my %stats = map {$_=>''} qw(
-			      gene_cnt
-			      gene_model_cnt
-			      gene_mrna_counts
-                              gene_length_avg
-                              mrna_with_human_desc
-			      genes_with_splice_variants_pct
-			      genes_with_splice_variants_cnt
-                              genes_with_ontology_terms
-			      mapped_ests_cnt
-
-			      protein_coding_with_supporting_cdna
-			      protein_coding_with_supporting_prot
-			      protein_coding_without_supporting_cdna
-			      protein_coding_without_supporting_prot
-
-                              protein_coding_with_supporting_cdna_and_protein
-                              protein_coding_with_supporting_only_cdna
-                              protein_coding_with_supporting_only_protein
-                              protein_coding_with_supporting_none
-
-			      gene_model_length_classes
-			      loci_similar_to_sgn_loci
-			      loci_similar_to_unch_prots_cnt
-			      loci_no_prot_hits_cnt
-			      loci_no_cdna_est_evidence_cnt
-                              unique_ontology_terms
-			     );
-  lock_keys(%stats);
-
-  #open the aggregated GFF3 file
-  open my $combi_in, '<', $gen_files->{combi_genomic_gff3}->{file} or die "$! reading combi gff3 file\n";
-  my $gene_length_accum = 0;
-  my %ontology_terms_seen;
-  while( my $line = <$combi_in> ) {
-    chomp $line;
-    ### line: $line
-    my @f = split /\t/, $line, 9;
-
-    my $src = lc $f[1];
-    my $type = $f[2];
-    ### src: $src
-    ### type: $type
-    if( $src eq 'itag_renaming' ) {
-      if( $type eq 'gene' ) {
-	$stats{gene_cnt}++;
-        $gene_length_accum +=  $f[4]-$f[3]+1;
-	### length: $f[4]-$f[3]+1
-      } elsif( $type eq 'mRNA' ) {
-	$stats{gene_model_cnt}++;
-        $stats{gene_mrna_counts} ||= {};
-	my ($parent) = $line =~ /Parent=gene:([^;\n]+)/ or die "cannot parse parent from gff3 line:\n$line\n";
-	### parent: $parent
-        $stats{gene_mrna_counts}{$parent}++;
-	if( $line =~ /functional_description=/ ) {
-	    $stats{mrna_with_human_desc}++;
-	}
-        if( my @terms = $line =~ /Ontology_term=([^;\n]+)/g ) {
-            $stats{genes_with_ontology_terms}++;
-            $ontology_terms_seen{$_} = 1 for @terms;
-	    ### terms: @terms
-        }
-      }
-    }
-    elsif( $src =~ /^itag_transcripts_/i ) {
-      if( $type eq 'match' ) {
-        my @tgts = map [split], $line =~ /Target=([^;\n]+)/g;
-	### targets: @tgts
-	our %stats_seen_est;
-	unless($stats_seen_est{$tgts[0][0]}++) {
-	  $stats{mapped_ests_cnt}++;
-	}
-      }
-    }
-  }
-  close $combi_in;
-
-  # calculate average gene length
-  $stats{gene_length_avg} = sprintf( '%0.0f', $gene_length_accum / $stats{gene_cnt} );
-
-  # calculate number of unique ontology terms
-  $stats{unique_ontology_terms} = scalar keys %ontology_terms_seen;
-
-  ## aggregate the splice variant statistics
-  my $variants = delete $stats{gene_mrna_counts};
-  # currently just counting how many genes have been annotated with splice variants
-  $stats{genes_with_splice_variants_cnt} = scalar grep $_ > 1, values %$variants;
-  $stats{genes_with_splice_variants_pct} = sprintf( '%0.1f', 100 * $stats{genes_with_splice_variants_cnt}/$stats{gene_cnt} );
-
-  # get statistics about gene models from the gene description codes
-  # generated by EuGene in the deflines of the protein and CDS fasta
-  # files
-  open my $deflines, "grep '>' $gen_files->{protein_fasta}->{file} |"
-    or die "$! running grep on $gen_files->{protein_fasta}->{file}";
-  while(my $line = <$deflines>) {
-    $line =~ s/^\s*>//; #<trim off the beginning symbol
-    my ($ident,$def) = split /\s+/,$line,2;
-    if(my $desc = parse_gene_description($def)) {
-        my $full_cdna = $desc->{cdna_complete_coverage};
-        my $cdna      = $full_cdna || $desc->{cds_from_cdna_aln};
-        my $prot      = $desc->{gene_model_from_prot_aln};
-
-        # count various logical combinations of protein and cdna support
-        $stats{protein_coding_with_supporting_cdna}++             if  $cdna;
-        $stats{protein_coding_with_supporting_prot}++             if            $prot;
-        $stats{protein_coding_without_supporting_cdna}++          if !$cdna;
-        $stats{protein_coding_without_supporting_prot}++          if           !$prot;
-        $stats{protein_coding_with_supporting_cdna_and_protein}++ if  $cdna &&  $prot;
-        $stats{protein_coding_with_supporting_only_cdna}++        if  $cdna && !$prot;
-        $stats{protein_coding_with_supporting_only_protein}++     if !$cdna &&  $prot;
-        $stats{protein_coding_with_supporting_none}++             if !$cdna && !$prot;
-
-        { # calculate length class stats
-            $stats{'gene_model_length_classes'} ||= {};
-            my $lc = $desc->{length_class};
-            $lc = 'none' unless defined $lc;
-            $stats{'gene_model_length_classes'}{$lc}++;
-        }
-    } else {
-      chomp $line;
-      die "ERROR: no parsable gene description found in defline $line\n";
-      next;
-    }
-  }
-  close $deflines;
-
-  # now go through the functional annotation and gather statistics on
-  # the similarity of loci to various things
-#   my $functional_in = Bio::FeatureIO->new( -format => 'gff', -version => 3, -file => $gen_files->{functional_prot_gff3}->{file} );
-#   while( my $feat = $functional_in->next_feature ) {
-#   }
-  lock_hash(%stats);
-
-  return \%stats;
-}
-
 #generate a block of text describing each file in the release
 sub file_descriptions {
   my ($release_info,$gen_files) = @_;
@@ -898,26 +758,6 @@ sub postprocess_gff3 {
     }
 }
 
-#given a line of text containing a gene description somewhere, parse
-#it and return a hashref of its contents, or nothing if no description
-#was found
-sub parse_gene_description {
-  my ($text) = @_;
-
-  my %stuff;
-
-  @stuff{qw/year cdna_complete_coverage gene_model_from_prot_aln cds_from_cdna_aln program length_class/}
-    = $text =~ / \b (\d\d) F (\d) H (\d) E (\d) I ([A-Z]{2}) (L (\d))? \b /x
-      or return;
-
-  my %program_map = ( EG => 'EuGene' );
-  $stuff{program} = $program_map{$stuff{program}} or die "unknown program code '$stuff{program}' found in gene description";
-
-  lock_hash(%stuff);
-
-  return \%stuff;
-}
-
 sub format_deflines {
   my ($prot_seq_file, $descriptions, $out_fh) = @_;
 
@@ -949,84 +789,39 @@ sub write_readme {
   my $gen_files = $release->get_all_files;
 
   $ncbi_tax_id ||= 0; #or die "must pass ncbi tax id as second argument to write_readme()\n";
-  my $organism = 'Tomato';
-  my $project_name = 'International Tomato Genome Annotation';
-  my $project_acronym = 'ITAG';
-
-  $stats ||= {};
-  my %fmt_stats = %$stats;
-  $_ = commify_number($_ || 0) foreach values %fmt_stats;
-
-  # format the splice variants text
-  if( $fmt_stats{genes_with_splice_variants_cnt} ) {
-      $fmt_stats{genes_with_splice_variants_pct} = " ($fmt_stats{genes_with_splice_variants_pct}%)";
-  } else {
-      $fmt_stats{genes_with_splice_variants_cnt} = 'no';
-      $fmt_stats{genes_with_splice_variants_pct} = '';
-  }
-
-  $fmt_stats{mrna_with_human_desc} = 'all' if $fmt_stats{mrna_with_human_desc} eq $fmt_stats{gene_model_cnt};
-
-  lock_hash(%fmt_stats);
-
-  my $file_descriptions = file_descriptions($release,$gen_files);
-
-  #use Data::Dumper;
-  #warn 'stats are '.Dumper(\%fmt_stats);
-
-# The $release_tag release is also available at NCBI:
-
-# http://www.ncbi.nlm.nih.gov/mapview/map_search.cgi?taxid=$ncbi_tax_id
-
-# Datasets are also available from SGN's bulk download tool (paste in or
-# upload a list of identifiers and download the corresponding data):
-
-# http://www.solgenomics.net/bulk/input.pl
 
   #PARAGRAPH ABOUT EST COVERAGE AND PROTEIN SIMILARITY
 # $fmt_stats{loci_similar_to_unch_prots_cnt} loci have similarity only to uncharacterised proteins (i.e. hypothetical, predicted, unknown etc), $fmt_stats{loci_no_prot_hits_cnt} have no significant protein similarity to GenBank proteins, and of these $fmt_stats{loci_no_cdna_est_evidence_cnt} also have no supporting EST/cDNA evidence and may represent erroneous gene predictions.
 
-  my $release_dirname = $release->dir_basename;
-  my $release_tag     = $release->release_tag;
+  my $readme_template = <<'EOT';
+[%- USE Comma -%]
+[%- BLOCK based_count -%]
+[% num | comma %] ([% num / base * 100 | format('%0.1f') %]%)
+[%- END -%]
+[% release_tag %] [% organism %] Genome release
 
-  my $date_str = POSIX::strftime( "%B %e, %Y", gmtime() );
+The [% project_name %] project ([% project_acronym %]) is pleased to announce the release of the latest version of the official [% organism %] genome annotation ([% release_tag %]).  This set of release files was generated on [% date_str %]
 
-  # string-format a frequency as "number (pct %)" relative to the given base count
-  my $fmt_pct = sub {
-      my $s = my $n = shift;
-      my $base = shift;
-      s/,//g for $n, $base;
-      my $pct = sprintf('%0.1f',$n/$base*100);
-      return "$s ($pct%)";
-  };
-  # format one of the gene model counts
-  tie my %fmt_gm, 'Tie::Function' => sub {
-      $fmt_pct->( $fmt_stats{+shift}, $fmt_stats{'gene_model_cnt'} );
-  };  
+The [% release_tag %] release contains [% s.gene_length.count | comma %] genes in all, with [% s.gene_models | comma %] gene models. Average gene length is [% s.gene_length.mean | format('%0.0f') | comma %] base pairs.  Currently, [% s.genes_with_splice_variants || 'no' %] genes have annotated splice variants.  [% s.mapped_ests | comma %] cDNA and EST sequences were aligned to the genome.
 
-  my $readme_text = <<EOT;
-$release_tag $organism Genome release
-
-The $project_name project ($project_acronym) is pleased to announce the release of the latest version of the official $organism genome annotation ($release_tag).  This set of release files was generated on $date_str.
-
-The $release_tag release contains $fmt_stats{gene_cnt} genes in all, with $fmt_stats{gene_model_cnt} gene models. Average gene length is $fmt_stats{gene_length_avg} base pairs.  Currently, $fmt_stats{genes_with_splice_variants_cnt} genes$fmt_stats{genes_with_splice_variants_pct} have annotated splice variants.  $fmt_stats{mapped_ests_cnt} cDNA and EST sequences were aligned to the genome.  The table below summarizes the numbers of gene models utilizing protein and/or EST/cDNA supporting:
+The table below summarizes how many gene models utilize supporting evidence from proteins and/or EST/cDNA alignments:
 
 Description                                     |   Count
 -----------------------------------------------------------------
-Gene models with cDNA homology support          | $fmt_gm{protein_coding_with_supporting_cdna}
-Gene models without cDNA homology support       | $fmt_gm{protein_coding_without_supporting_cdna}
-Gene models with protein homology support       | $fmt_gm{protein_coding_with_supporting_prot}
-Gene models without protein homology support    | $fmt_gm{protein_coding_without_supporting_prot}
-Gene models with both cDNA and protein support  | $fmt_gm{protein_coding_with_supporting_cdna_and_protein}
-Gene models with only cDNA homology support     | $fmt_gm{protein_coding_with_supporting_only_cdna}
-Gene models with only protein homology support  | $fmt_gm{protein_coding_with_supporting_only_protein}
-Gene models with no homology support            | $fmt_gm{protein_coding_with_supporting_none}
+Gene models with cDNA homology support          | [% INCLUDE based_count num=s.protein_coding_with_supporting_cdna             base=s.gene_models %]
+Gene models without cDNA homology support       | [% INCLUDE based_count num=s.protein_coding_without_supporting_cdna          base=s.gene_models %]
+Gene models with protein homology support       | [% INCLUDE based_count num=s.protein_coding_with_supporting_prot             base=s.gene_models %]
+Gene models without protein homology support    | [% INCLUDE based_count num=s.protein_coding_without_supporting_prot          base=s.gene_models %]
+Gene models with both cDNA and protein support  | [% INCLUDE based_count num=s.protein_coding_with_supporting_cdna_and_protein base=s.gene_models %]
+Gene models with only cDNA homology support     | [% INCLUDE based_count num=s.protein_coding_with_supporting_only_cdna        base=s.gene_models %]
+Gene models with only protein homology support  | [% INCLUDE based_count num=s.protein_coding_with_supporting_only_protein     base=s.gene_models %]
+Gene models with no homology support            | [% INCLUDE based_count num=s.protein_coding_with_supporting_none             base=s.gene_models %]
 
-With respect to functional annotation, $fmt_stats{genes_with_ontology_terms} genome features have ontology (primarily Gene Ontology) terms associated, with a total of $fmt_stats{unique_ontology_terms} different ontology terms represented.  In addition, $fmt_stats{mrna_with_human_desc} gene models/transcripts are annotated with best-guess text descriptions of their function.
+With respect to functional annotation, [% s.ontology_terms_per_mrna.count | comma %] gene models have ontology (primarily Gene Ontology) terms associated, with a total of [% s.unique_ontology_terms | comma %] different ontology terms represented.  In addition, [% s.gene_models_with_human_desc | comma %] gene models/transcripts are annotated with best-guess text descriptions of their function.
 
 Files included in this release:
 
-$file_descriptions
+[% file_descriptions %]
 
 Sequences and annotations can also be viewed and searched on SGN:
 
@@ -1034,7 +829,7 @@ http://solgenomics.net/gbrowse/
 
 The fully annotated chromosome sequences in GFF version 3 format, along with Fasta files of cDNA, CDS, genomic and protein sequences, and lists of genes are available from the SGN ftp site at:
 
-ftp://ftp.solgenomics.net/tomato_genome/annotation/${release_dirname}/
+ftp://ftp.solgenomics.net/tomato_genome/annotation/[% release_dirname %]/
 
 For those who are not familiar with the relatively new GFF3 format,
 the format specification can be found here:
@@ -1043,7 +838,7 @@ http://www.sequenceontology.org/gff3.shtml
 
 A graphic display of the $organism sequence and annotation can be viewed using SGN's genome browser. Browse the chromosomes, search for names or short sequences and view search hits on the whole genome, in a close-up view or on a nucleotide level:
 
-http://www.solgenomics.net/gbrowse/
+http://solgenomics.net/gbrowse/
 
 SGN's BLAST services have also been updated with the new datasets and are available from:
 
@@ -1059,15 +854,30 @@ Please send comments or questions to:
 
 itag\@sgn.cornell.edu
 
-The $project_acronym Team
+The [% project_acronym %] Team
 
 EOT
 
-  #do some silliness to correct the word wrapping of the text so it
-  #comes out looking nice no matter what
-#  $readme_text =~ s/(?<=[^\n])\n(?=[^\n])/ /g;
-  $readme_text = wrap_long_lines($readme_text);
+  my $readme_text;
+  my $tt = Template->new;
+  $tt->process(
+      \$readme_template,
+      {
+        s                 => $stats,
+        release_tag       => $release->release_tag,
+        date_str          => POSIX::strftime( "%B %e, %Y", gmtime() ),
+        organism          => 'Tomato',
+        project_name      => 'International Tomato Annotation Group',
+        project_acronym   => 'ITAG',
+        file_descriptions => file_descriptions($release,$gen_files),
+        release_dirname   => $release->dir_basename,
+       },
+      \$readme_text,
+     ) || die $tt->error;
 
+  # do some silliness to correct the word wrapping of the text so it
+  # comes out looking nice
+  $readme_text = wrap_long_lines( $readme_text );
 
   #and print it to the readme file
   open my $readme, '>',$gen_files->{readme}->{file}
@@ -1679,3 +1489,4 @@ sub get_dbh {
     require CXGN::DB::Connection;
     $dbh ||= CXGN::DB::Connection->new;
 }
+
