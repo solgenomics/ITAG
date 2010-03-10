@@ -800,7 +800,7 @@ sub write_readme {
 [%- END -%]
 [%- BLOCK stat_sparse -%]
    [% label %]
-  -------------------------------------------------------
+  ---------------------------------------------------
      Min     [% stat.min | comma %]
      Max     [% stat.max | comma %]
      Range   [% stat.max-stat.min | comma %]
@@ -830,7 +830,11 @@ Contents:
 
 == 1. Introduction ==
 
-The [% project_name %] ([% project_acronym %]) is pleased to announce the [% release_tag %] release of the official [% organism %] genome annotation ([% release_tag %]), covering [% s.genomic_bases / genome_size * 100 | format('%0.0f') %]% of the estimated [% INCLUDE megabases bp=genome_size %] genome, with [% s.gene_models | comma %] gene models.  This release file set was generated on [% date_str %].
+The [% project_name %] ([% project_acronym %]) is pleased to announce the [% release_tag %] release of the official [% organism %] genome annotation ([% release_tag %]), covering approximately [% s.genomic_bases / genome_size * 100 | format('%0.0f') %]% of the genome, with [% s.gene_models | comma %] gene models.  This release file set was generated on [% date_str %].
+
+In this release, [% INCLUDE based_count num=s.protein_coding_with_supporting_cdna_or_protein base=s.gene_models %] of the gene models are supported by homology to either existing ESTs or cDNA sequences, with [% INCLUDE based_count num=s.protein_coding_with_supporting_cdna_and_protein base=s.gene_models %] supported by both.
+
+[% IF s.gene_models_with_human_desc == s.gene_models; THEN %]All[% ELSE; INCLUDE based_count num=s.gene_models_with_human_desc base=s.gene_models; END %] of the gene models are annotated with best-guess text descriptions of their function, and [% INCLUDE based_count num=s.gene_models_with_GO_terms base=s.gene_models %] have associated Gene Ontology terms describing their function.
 
 Please send comments or questions about these annotations to: itag\@sgn.cornell.edu
 
@@ -844,7 +848,7 @@ Sequences and annotations can also be viewed and searched on SGN: http://solgeno
 
 The fully annotated chromosome sequences in GFF version 3 format, along with Fasta files of cDNA, CDS, genomic and protein sequences, and lists of genes are available from the SGN ftp site at: ftp://ftp.solgenomics.net/tomato_genome/annotation/[% release_dirname %]/
 
-For those who are not familiar with the relatively new GFF3 format, the format specification can be found here: http://www.sequenceontology.org/gff3.shtml
+For those who are not familiar with the GFF3 file format, the format specification can be found here: http://www.sequenceontology.org/gff3.shtml
 
 A graphical display of the [% organism %] sequence and annotation can be viewed using SGN's genome browser. Browse the chromosomes, search for names or short sequences and view search hits on the whole genome, in a close-up view or on a nucleotide level: http://solgenomics.net/gbrowse/
 
@@ -856,8 +860,8 @@ Announcements of new releases, updates of data, tools, and other developments fr
 
 == 4. Release statistics ==
 
-4.1 Genome Coverage
-with 
+4.1 Proportion of Genome Annotated
+
   Estimated genome size:      [% INCLUDE megabases bp=genome_size %]
   Size of annotated assembly: [% INCLUDE megabases bp=s.genomic_bases %]
   Est. proportion of genome:  [% s.genomic_bases / genome_size * 100 | format('%0.0f') %]%
@@ -876,7 +880,7 @@ with
 
 4.3 Functional Annotation
 
-  Gene models with GO terms:   [% INCLUDE based_count num=s.gene_models_with_GO_terms base=s.gene_models %]
+  Gene models with GO terms:   [% INCLUDE based_count num=s.gene_models_with_GO_terms base=s.gene_models %]o
   Unique GO terms associated:  [% s.unique_GO_terms | comma %]
   Genes with splice variants:  [% s.genes_with_splice_variants | comma %]
   Gene models with functional
@@ -887,6 +891,8 @@ with
 4.4 Gene model supporting evidence
 
   ESTs/cDNAs aligned to the genome: [% s.mapped_ests | comma %]
+
+  Gene models with cDNA OR protein support:       [% INCLUDE based_count num=s.protein_coding_with_supporting_cdna_or_protein  base=s.gene_models  | format('%17s') %]
 
   Gene models with cDNA homology support:         [% INCLUDE based_count num=s.protein_coding_with_supporting_cdna             base=s.gene_models  | format('%17s') %]
   Gene models without cDNA homology support:      [% INCLUDE based_count num=s.protein_coding_without_supporting_cdna          base=s.gene_models  | format('%17s') %]

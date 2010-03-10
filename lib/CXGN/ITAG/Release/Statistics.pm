@@ -69,6 +69,8 @@ protein_coding_without_supporting_prot
 
 protein_coding_with_supporting_cdna_and_protein
 
+protein_coding_with_supporting_cdna_or_protein
+
 protein_coding_with_supporting_only_cdna
 
 protein_coding_with_supporting_only_protein
@@ -115,6 +117,8 @@ has $_ => (
              protein_coding_with_supporting_prot
              protein_coding_without_supporting_cdna
              protein_coding_without_supporting_prot
+
+             protein_coding_with_supporting_cdna_or_protein
 
              protein_coding_with_supporting_cdna_and_protein
              protein_coding_with_supporting_only_cdna
@@ -187,6 +191,7 @@ sub _analyze_protein_fasta {
             $self->inc_protein_coding_with_supporting_prot             if            $prot;
             $self->inc_protein_coding_without_supporting_cdna          if !$cdna;
             $self->inc_protein_coding_without_supporting_prot          if           !$prot;
+            $self->inc_protein_coding_with_supporting_cdna_or_protein  if  $cdna ||  $prot;
             $self->inc_protein_coding_with_supporting_cdna_and_protein if  $cdna &&  $prot;
             $self->inc_protein_coding_with_supporting_only_cdna        if  $cdna && !$prot;
             $self->inc_protein_coding_with_supporting_only_protein     if !$cdna &&  $prot;
