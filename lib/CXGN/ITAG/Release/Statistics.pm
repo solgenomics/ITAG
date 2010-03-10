@@ -227,7 +227,7 @@ sub _analyze_genomic_gff3 { # process the genomic gff3
         next if $line =~ /^#/;
         ### line: $line
         my @f = split /\t/, $line, 9;
-        my (undef,$src,$type,$start,$end,undef,$strand,undef,$attr) = split /\t/, $line, 9;
+        my ($ref,$src,$type,$start,$end,undef,$strand,undef,$attr) = split /\t/, $line, 9;
         $src = lc $src;
         my $length = $end-$start+1;
 
@@ -248,9 +248,11 @@ sub _analyze_genomic_gff3 { # process the genomic gff3
             } elsif ( $type eq 'gene' ) {
                 ### length: $gene_length
                 if ( my $p = $previous_gene_end->{$strand} ) {
-                    $self->add_intergenic_length( $start - $p + 1 );
+                    if( $p->[0] eq $ref ) {
+                        $self->add_intergenic_length( $start - $p->[1] + 1 );
+                    }
                 }
-                $previous_gene_end->{$strand} = $end;
+                $previous_gene_end->{$strand} = [$ref,$end];
             } elsif ( $type eq 'mRNA' ) {
                 $self->add_gene_model_length( $length );
                 $previous_exon_end->{$strand} = undef; #< new mrna on this strand
@@ -265,6 +267,8 @@ sub _analyze_genomic_gff3 { # process the genomic gff3
                     $self->add_ontology_terms_per_mrna( scalar @terms );
                     $ontology_terms_seen{$_} = 1 for @terms;
                     ### terms: @terms
+                } else {
+                    $self->add_ontology_terms_per_mrna( 0 );
                 }
             }
         } elsif ( $src =~ /^itag_transcripts_/i ) {
