@@ -31,7 +31,7 @@ protein_fasta
 
 =head2 L<Statistics::Descriptive::Full> attributes
 
-gene length
+gene_model_length
 
 intergenic_length
 
@@ -54,6 +54,8 @@ mapped_ests
 gene_models
 
 gene_models_with_human_desc
+
+genomic_bases
 
 protein_coding_with_supporting_cdna
 
@@ -83,10 +85,10 @@ has $_->[0] => (
         'add_'.$_->[0]   => 'add_data'
        },
    ) for
-    [qw[ gene_length              full ]],
+    [qw[ gene_model_length        full ]],
     [qw[ intergenic_length        full ]],
-    [qw[ exon_length                   ]],
-    [qw[ intron_length                 ]],
+    [qw[ exon_length              full ]],
+    [qw[ intron_length            full ]],
     [qw[ exons_per_gene_model     full ]],
     [qw[ ontology_terms_per_mrna  full ]];
 
@@ -103,6 +105,8 @@ has $_ => (
              mapped_ests
              gene_models
              gene_models_with_human_desc
+
+             genomic_bases
 
              protein_coding_with_supporting_cdna
              protein_coding_with_supporting_prot
@@ -216,6 +220,10 @@ sub _analyze_genomic_gff3 { # process the genomic gff3
     my $combi_in = $self->genomic_gff3->openr;
     while ( my $line = <$combi_in> ) {
         chomp $line;
+        if( $line =~ /^##sequence-region\s+\S+\s+(\d+)\s+(\d+)/ ) {
+            $self->inc_genomic_bases( $2 - $1 + 1 );
+        }
+
         next if $line =~ /^#/;
         ### line: $line
         my @f = split /\t/, $line, 9;
@@ -238,13 +246,13 @@ sub _analyze_genomic_gff3 { # process the genomic gff3
                 $mrna_exon_counts{$parent}++;
 
             } elsif ( $type eq 'gene' ) {
-                $self->add_gene_length( $length );
                 ### length: $gene_length
                 if ( my $p = $previous_gene_end->{$strand} ) {
                     $self->add_intergenic_length( $start - $p + 1 );
                 }
                 $previous_gene_end->{$strand} = $end;
             } elsif ( $type eq 'mRNA' ) {
+                $self->add_gene_model_length( $length );
                 $previous_exon_end->{$strand} = undef; #< new mrna on this strand
                 $self->inc_gene_models;
                 my ($parent) = $line =~ /Parent=gene:([^;\n]+)/ or die "cannot parse parent from gff3 line:\n$line\n";
