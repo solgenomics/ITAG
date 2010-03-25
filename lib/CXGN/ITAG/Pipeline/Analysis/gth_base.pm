@@ -100,7 +100,7 @@ sub resource_estimate {
         }
         $max_length
     };
-    my $genomic_size = _cached_file_size( $genomic_file )
+    my $genomic_size = -s $genomic_file
 	or die "sanity check failed, no size found for genomic file $genomic_file";
 
     my $megs = 2**20;
