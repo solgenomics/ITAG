@@ -90,8 +90,15 @@ sub resource_estimate {
 
     # get our cdna file if necessary
     my $cdna_size = $self->{cdna_file_size} ||= do {
-	my $cdna_file = $self->_cdna_file;
-	-s $cdna_file
+	my $cdna_file = Bio::SeqIO->new(-format => 'fasta',
+                                        -file   => $self->_cdna_file,
+                                       );
+        my $max_length = 0;
+        while( my $seq = $cdna_file->next_seq ) {
+            my $l = $seq->length;
+            $max_length = $l+length($seq->id.$seq->desc) if $l > $max_length;
+        }
+        $max_length
     };
     my $genomic_size = _cached_file_size( $genomic_file )
 	or die "sanity check failed, no size found for genomic file $genomic_file";
@@ -123,29 +130,66 @@ sub run_gth {
     my $un_xed_seqs = $class->local_temp($seqname,"un_xed.seq");
     $class->make_un_xed_seqfile( $seqfile => $un_xed_seqs );
 
-    my $cdna_file = $class->_cdna_file;
+    my $cdna_file = Bio::SeqIO->new(-format => 'fasta',
+                                    -file   => $class->_cdna_file,
+                                   );
 
-    my @cmd =
-        ( 'gth',
-          '-xmlout',
-          -minalignmentscore => '0.90',
-          -mincoverage       => '0.90',
-          -seedlength        => 16,
-	  -o                 => $outfile,
-          -species           => 'arabidopsis',
-          -cdna              => $cdna_file,
-          -genomic           => $un_xed_seqs,
-        );
-    system @cmd
-        and die "$! running @cmd";
+    open my $outfile_fh, "| gzip -c > $outfile"
+        or die "$! writing outfile $outfile";
+    $outfile_fh->print("##gff-version 3\n");
 
-    #now convert the gthxml to gff3
-    $class->_gthxml_to_gff3( $outfile, $un_xed_seqs, $seqname, $gff3_out_file );
+    open my $gff3_out_fh, '>', $gff3_out_file
+        or die "$! writing gff3 file $gff3_out_file";
+
+    my $got_seqregion;
+    while( my $seq = $cdna_file->next_seq ) {
+
+        my $tempdir = File::Temp->newdir( DIR => $work_dir );
+
+        my $temp_cdna = "$tempdir/cdna";
+        Bio::SeqIO->new( -format => 'fasta', -file => ">$temp_cdna" )
+                  ->write_seq( $seq );
+
+        my $temp_out  = "$tempdir/xml";
+
+        my @cmd =
+            ( 'gth',
+              '-xmlout',
+              '-force',
+              -minalignmentscore => '0.90',
+              -mincoverage       => '0.90',
+              -seedlength        => 16,
+              -o                 => "$temp_out",
+              -species           => 'arabidopsis',
+              -cdna              => "$temp_cdna",
+              -genomic           => $un_xed_seqs,
+             );
+        ### command: @cmd
+        system @cmd
+            and die "$! running @cmd";
+
+        my $temp_gff3 = "$tempdir/gff3";
+
+        #now convert the gthxml to gff3
+        $class->_gthxml_to_gff3( "$temp_out", $un_xed_seqs, $seqname, "$temp_gff3" );
+
+        #append the output xml to the overall output file - nobody is going to be using this anyway
+        open my $o, $temp_out or die 'cannot read temp out??';
+        $outfile_fh->print( $_ ) while <$o>;
+
+        #append the gff3 to the overall gff3 file
+        open my $g, $temp_gff3 or die 'cannot open temp gff3??';
+        while( <$g> ) {
+            next if /^##gff-version/ || /^# no results/;
+            if( /^##sequence-region/ ) {
+                next if $got_seqregion;
+                $got_seqregion = 1;
+            }
+            $gff3_out_fh->print( $_ );
+        }
+    }
 
     rmtree( $work_dir );
-
-    # and exit the program
-    exit;
 }
 
 

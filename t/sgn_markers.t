@@ -5,7 +5,9 @@ use FindBin;
 use File::Temp;
 use File::Spec;
 
-use Test::More tests => 11;
+use IPC::Cmd qw/ can_run /;
+
+use Test::More tests => 12;
 
 my $class = 'CXGN::ITAG::Pipeline::Analysis::sgn_markers';
 use_ok $class;
@@ -17,8 +19,11 @@ my ( $sgn_markers_gthxml, $un_xed_seqs ) =
 my $temp_out = File::Temp->new;
 $temp_out->close;
 
-$class->_gthxml_to_gff3( $sgn_markers_gthxml, $un_xed_seqs, 'C00.6_contig21', $temp_out->filename );
+my $seqname = 'C00.6_contig21';
 
+
+# test _gthxml_to_gff3
+$class->_gthxml_to_gff3( $sgn_markers_gthxml, $un_xed_seqs, $seqname, $temp_out->filename );
 my @correct_features =
     (
      { Name => 'C2_At4g00560',
@@ -32,4 +37,33 @@ while( my $f = $gff3_in->next_feature ) {
     while( my ($k,$v) = each %$cf ) {
         is( ($f->annotation->get_Annotations($k))[0]->value, $v );
     }
+}
+
+my $pipe = CXGN::ITAG::Pipeline->open;
+SKIP: {
+
+SKIP: {
+    skip 'set INTENSIVE_TESTS environment variable to run long-running, cpu-intensive tests', 1
+        unless $ENV{INTENSIVE_TESTS};
+    skip 'genomethreader not installed', 1
+        unless can_run( 'gth' );
+
+    my $xml_out = File::Temp->new;
+    $class->run_gth( $seqname,
+                     $un_xed_seqs,
+                     $xml_out->filename,
+                     $temp_out->filename,
+                    );
+
+    my $out_gff3 = slurp( $temp_out );
+    like( $out_gff3, qr/Name=C2_At4g/, 'report looks good' );
+#    print $out_gff3;
+}
+
+
+
+sub slurp {
+    open( my $f, '<', +shift ) or die;
+    local $/;
+    return <$f>
 }
