@@ -294,7 +294,10 @@ sub dump_data {
                   gff3_output_spec_index => 0,
                   release_files => [qw| combi_genomic_gff3  models_gff3 |],
                   alter_lines_with => sub {
-                      add_functional_annotations( shift, $go_terms, $human_readable_descriptions )
+                      my $line = shift;
+                      $line = add_name_attr( $line );
+                      $line = add_functional_annotations( $line, $go_terms, $human_readable_descriptions );
+                      return $line;
                   },
                   errors_fatal => 1,
                 },
@@ -307,6 +310,7 @@ sub dump_data {
                                  ]
                               ],
                   gff3_output_spec_index => 0,
+                  alter_lines_with => \&add_name_attr,
                   release_files => [qw| combi_genomic_gff3 genefinders_gff3 |],
                 },
                 { analyses => 'trnascanse',
@@ -592,6 +596,18 @@ sub add_functional_annotations {
   $gff3_line .= "\n";
 
   return $gff3_line;
+}
+
+sub add_name_attr {
+    my $line = shift;
+    return $line if $line =~ /Name=/;
+    return $line unless $line =~ /ID=([^;\n]+)/;
+
+    my $name = $1;
+    $name =~ s/^[a-z]://i;
+    $line .= ";Name=$name";
+
+    return $line;
 }
 
 # given a fasta file containing the functional description in the
