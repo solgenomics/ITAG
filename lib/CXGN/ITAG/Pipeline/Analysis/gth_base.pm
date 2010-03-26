@@ -81,40 +81,6 @@ sub run {
     $self->atomic_move(@ops);
 }
 
-# estimates the resources for each sequence name, used for giving
-# resource hints to the resource manager (which, currently, is Torque)
-sub resource_estimate {
-    my ( $self, $batch, $seqname ) = @_;
-
-    my $genomic_file = $self->_seq_file($batch,$seqname);
-
-    # get our cdna file if necessary
-    my $cdna_size = $self->{cdna_file_size} ||= do {
-	my $cdna_file = Bio::SeqIO->new(-format => 'fasta',
-                                        -file   => $self->_cdna_file,
-                                       );
-        my $max_length = 0;
-        while( my $seq = $cdna_file->next_seq ) {
-            my $l = $seq->length;
-            $max_length = $l+length($seq->id.$seq->desc) if $l > $max_length;
-        }
-        $max_length
-    };
-    my $genomic_size = -s $genomic_file
-	or die "sanity check failed, no size found for genomic file $genomic_file";
-
-    my $megs = 2**20;
-    my $vmem_est = sprintf('%0.0f',
-			   (   200*$megs
-			     + 100*($genomic_size + $cdna_size)
-			     + '1.2e-02' * $genomic_size * $cdna_size
-                           )/$megs
-			  );
-    #print "cdna $cdna_size, genomic size: $genomic_size => vmem $vmem_est M\n";
-
-    return { vmem => $vmem_est };
-}
-
 # class method, meant to be run on a cluster node through perl -e
 sub run_gth {
     my ( $class, $seqname, $seqfile, $outfile, $gff3_out_file ) = @_;
