@@ -579,7 +579,8 @@ sub add_functional_annotations {
   if( my $desc_string = $descriptions->{$id}) {
       # add it to the gff3 string
       ### desc: $desc_string
-      $gff3_line .= ";functional_description=".uri_escape( $desc_string );
+      $gff3_line .= ";Name=$id" unless $gff3_line =~ /Name=/; # line must have a display name in order to be indexed
+      $gff3_line .= ";description=".gff3_escape( $desc_string );
   }
 
   # add ontology terms if present
@@ -1161,9 +1162,9 @@ glyph        = processed_transcript
 fgcolor      = black
 bgcolor      = goldenrod
 stranded     = 1
-description  = sub { use CXGN::Page::FormattingHelpers;  CXGN::Page::FormattingHelpers::truncate_string((shift->attributes('functional_description'))[0], 20, '...') }
+description  = sub { use CXGN::Page::FormattingHelpers;  CXGN::Page::FormattingHelpers::truncate_string((shift->attributes('description'))[0], 40, '...') }
 font2color   = blue
-title        = sub { (shift->attributes('functional_description'))[0] }
+title        = sub { (shift->attributes('description'))[0] }
 category     = Gene Model features
 das category = transcription
 strand_arrow = 1
