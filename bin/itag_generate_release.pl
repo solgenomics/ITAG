@@ -580,7 +580,7 @@ sub add_functional_annotations {
       # add it to the gff3 string
       ### desc: $desc_string
       $gff3_line .= ";Name=$id" unless $gff3_line =~ /Name=/; # line must have a display name in order to be indexed
-      $gff3_line .= ";description=".gff3_escape( $desc_string );
+      $gff3_line .= ";description=$desc_string"; #< descriptions are already gff3-escaped
   }
 
   # add ontology terms if present
