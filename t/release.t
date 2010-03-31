@@ -40,8 +40,8 @@ ok(! $rels[0]->is_pre_release,'it is not a pre');
 # test get_file_info
 eval{ $rels[0]->get_file_info('combi_gff3') };
 like( $EVAL_ERROR, qr/unknown/, 'get_file_info dies on unknown shortname');
-is($rels[0]->get_file_info('combi_genomic_gff3')->{file},"$tempdir/ITAG1_release/ITAG1_all_genomic.gff3",'got correct combi_genomic_gff3 filename');
-is($rels[1]->get_file_info('combi_genomic_gff3')->{file},"$tempdir/ITAG1_pre_release/ITAG1_pre_all_genomic.gff3",'got correct combi_genomic_gff3 filename');
+is($rels[0]->get_file_info('combi_genomic_gff3')->{file},"$tempdir/ITAG1_release/ITAG1_genomic_all.gff3",'got correct combi_genomic_gff3 filename');
+is($rels[1]->get_file_info('combi_genomic_gff3')->{file},"$tempdir/ITAG1_pre_release/ITAG1_pre_genomic_all.gff3",'got correct combi_genomic_gff3 filename');
 
 # test release_tag
 is($rels[0]->release_tag, 'ITAG1');
