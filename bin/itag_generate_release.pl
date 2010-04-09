@@ -695,14 +695,12 @@ sub postprocess_gff3 {
   -f $seqs_file or die "seqs file '$seqs_file' not found!";
   -f $gff3_file or die "gff3 file '$gff3_file' not found!";
 
-  clear_uniq_ids();
-
   #open a temp file for our output
   my ($temp_out_fh,$temp_out_file) = tempfile(File::Spec->catfile(File::Spec->tmpdir,"$FindBin::Script-gff3-postproc-XXXXXX"), UNLINK => 1);
 
   #sort the gff3 file by ref sequence and start coordinate into the temp file,
   #and remove duplicates
-  open my $sg, "sort -k 1,1 -k 4,4g -s $gff3_file | gff3_reformat.pl -i -S $seqs_file | "
+  open my $sg, "sort -k 1,1 -k 4,4g -s $gff3_file | gff3_reformat.pl -i -S $seqs_file -U -u '-i' | "
     or die "$! running sort on file '$gff3_file'";
 
   #print the sorted output into the temp file, massaging the
@@ -731,10 +729,6 @@ sub postprocess_gff3 {
       #print $temp_out_fh "weird line:\n$line\n" unless @fields == 9;
       $fields[1] = 'ITAG' if $fields[1] eq 'ITAG_ITAG';
 
-      #uniqify the identifiers
-      $fields[8] =~ s/(?<=ID=)([^;]+)/uniq_id($1)/e;
-      $fields[8] =~ s/(?<=Parent=)([^;]+)/last_uniq_id($1)/e;
-
       print $temp_out_fh join "\t",@fields;
       print $temp_out_fh "\n";
     }
@@ -744,35 +738,10 @@ sub postprocess_gff3 {
   #now open the original file, print the pragmas we found, and copy the rest into it
   open my $orig, ">$gff3_file" or die "$! writing $gff3_file";
   print $orig "##gff-version 3\n";
-  #print $orig "##sequence-region $_\n" foreach distinct sort @sequence_regions;
   print $orig "##$_\n" foreach @other_pragmas;
   $orig->flush();
   copy_or_die( $temp_out_file, $orig );
   close $orig;
-}
-
-{
-    my %id_ctr;
-    sub clear_uniq_ids() {
-        %id_ctr = ();
-    }
-    sub uniq_id {
-        my $id = shift;
-        my $cnt = $id_ctr{$id}++;
-        if ($cnt) {
-            return "$id-i$cnt";
-        }
-        return $id;
-    }
-    sub last_uniq_id {
-        my $id = shift;
-        no warnings 'uninitialized';
-        my $cnt = $id_ctr{$id}-1;
-        if ($cnt > 0) {
-            return "$id-i$cnt";
-        }
-        return $id;
-    }
 }
 
 sub format_deflines {
