@@ -7,7 +7,7 @@ use File::Spec;
 
 use IPC::Cmd qw/ can_run /;
 
-use Test::More tests => 12;
+use Test::More tests => 13;
 
 use CXGN::ITAG::Pipeline;
 
@@ -56,6 +56,10 @@ SKIP: {
 
     my $out_gff3 = slurp( $temp_out );
     like( $out_gff3, qr/Name=C2_At4g/, 'report looks good' );
+
+    my $out_xml = slurp( $xml_out );
+    like( $out_xml, qr/no longer provided/, 'XML is stubbed out' );
+
 #    print $out_gff3;
 }
 
