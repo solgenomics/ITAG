@@ -724,7 +724,7 @@ sub atomic_move {
       sleep 30 unless -f $source; #< wait 30 seconds for NFS to catch
                                   #  up if any of the files are missing
       File::Copy::move( $source, $target )
-	    or croak "Failed ($!) mv $source -> $target\n";
+	    or confess "Failed ($!) mv $source -> $target\n";
     }
   }; if( $EVAL_ERROR ) {
     unlink $_->[1] foreach @ops;
