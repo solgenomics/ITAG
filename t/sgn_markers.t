@@ -9,6 +9,8 @@ use IPC::Cmd qw/ can_run /;
 
 use Test::More tests => 12;
 
+use CXGN::ITAG::Pipeline;
+
 my $class = 'CXGN::ITAG::Pipeline::Analysis::sgn_markers';
 use_ok $class;
 
@@ -38,9 +40,6 @@ while( my $f = $gff3_in->next_feature ) {
         is( ($f->annotation->get_Annotations($k))[0]->value, $v );
     }
 }
-
-my $pipe = CXGN::ITAG::Pipeline->open;
-SKIP: {
 
 SKIP: {
     skip 'set INTENSIVE_TESTS environment variable to run long-running, cpu-intensive tests', 1
