@@ -1,8 +1,9 @@
 package CXGN::ITAG::Pipeline;
 use strict;
 use warnings;
-use English;
+use namespace::autoclean;
 use Carp;
+use Cwd qw/ abs_path /;
 use Memoize;
 
 use File::Basename;
@@ -101,6 +102,7 @@ sub _common_new {
   #set defaults
   $fields->{basedir}
       or croak 'must supply basedir argument to CXGN::ITAG::Pipeline constructor';
+  $fields->{basedir} = abs_path( $fields->{basedir} );
   $fields->{version} = _most_recent_pipeline_version($fields->{basedir}) unless defined $fields->{version};
 
   #validate
@@ -364,8 +366,8 @@ sub analysis {
 #  use Data::Dumper; print Dumper(\@_);
   $tag or croak 'must give analysis tag to analysis() method';
   my $a = eval { CXGN::ITAG::Pipeline::Analysis->open($tag, pipeline => $self) };
-  if($EVAL_ERROR) {
-    warn $EVAL_ERROR;
+  if( $@ ) {
+    warn $@;
     return;
   }
   return $a;

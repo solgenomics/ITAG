@@ -1,0 +1,8 @@
+owner_user	itagakhileshtyagi
+owner_group	itagakhileshtyagi
+owner_email	saloni@genomeindia.org
+
+depends_on	eugene
+
+produces_files	functional_ann:txt functional_ann:gff3
+

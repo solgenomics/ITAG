@@ -1,0 +1,7 @@
+owner_user	itagpipeline
+owner_group	itagpipeline
+owner_email	sgn-feedback@sgn.cornell.edu
+
+depends_on	blastp_ath repeats
+
+produces_files	rna:gff3

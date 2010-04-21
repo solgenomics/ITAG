@@ -70,11 +70,13 @@ my $build = Module::Build->new(
     },
 
     build_requires => {
+        'Capture::Tiny'  => 0,
 	#'CXGN::DB::Connection' => 0,
 	#'CXGN::Tools::Run' => 0,
-	'File::Temp' => 0,
-	'Test::More' => 0,
-	'Test::Warn' => 0,
+	'File::Temp'  => 0,
+        'Path::Class' => 0,
+	'Test::More'  => 0,
+	'Test::Warn'  => 0,
     },
 );
 $build->create_build_script;

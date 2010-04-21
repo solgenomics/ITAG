@@ -1,0 +1,7 @@
+owner_user	itagmips
+owner_group	itagmips
+owner_email	bruggmann@waksman.rutgers.edu
+
+depends_on	repeats
+
+produces_files	annotations:gff3

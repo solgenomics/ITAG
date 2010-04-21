@@ -1,0 +1,7 @@
+owner_user	itaggent
+owner_group	itaggent
+owner_email	jeffrey.fawcett@psb.ugent.be
+
+depends_on	seq geneid_tomato transcripts_sol transcripts_tomato repeats augustus glimmerhmm_ath glimmerhmm_tomato
+
+produces_files	annotations:gff3 proteins:fasta cds:fasta cdna:fasta

@@ -1,0 +1,2 @@
+file_exts	txt gff3 game fasta gff2 xml raw agp
+feature_ontology_url	http://song.cvs.sourceforge.net/*checkout*/song/ontology/sofa.obo?revision=1.93

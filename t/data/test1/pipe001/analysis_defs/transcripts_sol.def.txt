@@ -1,0 +1,7 @@
+owner_user	itagcab
+owner_group	itagcab
+owner_email	chiusano@unina.it
+
+depends_on	seq
+
+produces_files	spliced_alignment:gff3

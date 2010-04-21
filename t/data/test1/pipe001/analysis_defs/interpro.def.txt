@@ -1,0 +1,7 @@
+owner_user	itagimperial
+owner_group	itagimperial
+owner_email	j.abbott@imperial.ac.uk
+
+depends_on	renaming	
+
+produces_files	proteins:gff3 proteins:xml proteins:raw

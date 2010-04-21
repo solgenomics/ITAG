@@ -1,0 +1,5 @@
+owner_user	itagspain
+owner_group	itagspain
+owner_email	fcamara@imim.es
+depends_on	repeats
+produces_files	predictions:gff3

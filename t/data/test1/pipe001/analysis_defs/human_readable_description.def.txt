@@ -1,0 +1,6 @@
+owner_user	itagjoecker
+owner_email	joecker@mpiz-koeln.mpg.de
+
+depends_on	renaming blastp_ath_pep blastp_refseq_pep blastp_swissprot blastp_trembl interpro
+
+produces_files	prot_w_desc:fasta

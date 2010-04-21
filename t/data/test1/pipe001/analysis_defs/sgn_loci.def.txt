@@ -1,0 +1,6 @@
+owner_user  itagpipeline
+owner_group users
+owner_email sgn-feedback@sgn.cornell.edu
+
+produces_files rawpsl:txt loci:gff3
+depends_on renaming

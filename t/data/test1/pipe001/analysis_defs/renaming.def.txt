@@ -1,0 +1,6 @@
+owner_user    itagmips
+owner_group   itagmips
+owner_email   manuel.spannagl@helmholtz-muenchen.de
+
+depends_on            eugene
+produces_files        annotations:gff3 proteins:fasta cds:fasta cdna:fasta

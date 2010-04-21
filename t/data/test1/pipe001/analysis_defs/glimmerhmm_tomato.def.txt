@@ -1,0 +1,4 @@
+owner_user	itagwur
+owner_email	erwin.datema@wur.nl
+depends_on	repeats
+produces_files	annotations:gff3

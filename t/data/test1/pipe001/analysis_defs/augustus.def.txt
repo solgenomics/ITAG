@@ -1,0 +1,7 @@
+owner_user	itagpipeline
+owner_group     users
+owner_email	sgn-feedback@sgn.cornell.edu
+
+depends_on	repeats
+
+produces_files	predictions:gff3

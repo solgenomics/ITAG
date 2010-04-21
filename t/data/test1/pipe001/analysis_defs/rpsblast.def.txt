@@ -1,0 +1,7 @@
+owner_user	itagjoecker
+owner_group	itagjoecker
+owner_email	joecker@mpiz-koeln.mpg.de
+
+depends_on	renaming
+
+produces_files	tab:txt

@@ -1,0 +1,7 @@
+owner_user	itagimperial
+owner_group	itagimperial
+owner_email	j.abbott@imperial.ac.uk
+
+depends_on	seq
+
+produces_files	rna:gff3 rna:gff2

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<GTH_output xmlns="http://www.genomethreader.org/GTH_output/" GTH_XML_version="1.1">
+  <header xmlns="http://www.genomethreader.org/GTH_output/header/">
+    <source program="GenomeThreader" version="0.9.54" build_date="2006-07-28 11:51:28" run_date="2010-02-03 16:57:06"/>
+    <gDNA_template_files>
+      <temp_name>/tmp/itag-analysis-sgn_unigenes-_TRcOI/LE_HBa0001A17_SP6_33/un_xed.seq</temp_name>
+    </gDNA_template_files>
+    <reference_files>
+      <file ref_name="/tmp/itag-analysis-sgn_unigenes-_TRcOI/sgn_unigenes_combined.fasta" type="ESTcDNA"/>
+    </reference_files>
+    <splice_site_parameters parameter_type="Bayesian" species="arabidopsis"/>
+    <parameters>
+      <parameter name="bssmfile" value="arabidopsis"/>
+      <parameter name="scorematrixfile" value="BLOSUM62"/>
+      <parameter name="searchmode" value="forward=True,reverse=True)"/>
+      <parameter name="translationtable" value="1"/>
+      <parameter name="frompos" value="0"/>
+      <parameter name="topos" value="0"/>
+      <parameter name="width" value="0"/>
+      <parameter name="verbose" value="False"/>
+      <parameter name="skipalignmentout" value="False"/>
+      <parameter name="showintronmaxlen" value="120"/>
+      <parameter name="minorflen" value="64"/>
+      <parameter name="showseqnums" value="False"/>
+      <parameter name="gs2out" value="False"/>
+      <parameter name="maskpolyatails" value="False"/>
+      <parameter name="noautoindex" value="False"/>
+      <parameter name="minmatchlen" value="20"/>
+      <parameter name="seedlength" value="16"/>
+      <parameter name="exdrop" value="2"/>
+      <parameter name="online" value="False"/>
+      <parameter name="inverse" value="False"/>
+      <parameter name="exact" value="False"/>
+      <parameter name="chainwf" value="0.500000"/>
+      <parameter name="gcmaxgapwidth" value="1000000"/>
+      <parameter name="gcmincoverage" value="50"/>
+      <parameter name="introncutout" value="False"/>
+      <parameter name="autointroncutout" value="0"/>
+      <parameter name="icinitialdelta" value="50"/>
+      <parameter name="iciterations" value="2"/>
+      <parameter name="icdeltaincrease" value="50"/>
+      <parameter name="icminremintronlen" value="10"/>
+      <parameter name="nou12intronmodel" value="False"/>
+      <parameter name="u12donorprob" value="0.990000"/>
+      <parameter name="u12donorprob1mism" value="0.900000"/>
+      <parameter name="probies" value="0.500000"/>
+      <parameter name="probdelgen" value="0.030000"/>
+      <parameter name="identityweight" value="2.000000"/>
+      <parameter name="mismatchweight" value="-2.000000"/>
+      <parameter name="undetcharweight" value="0.000000"/>
+      <parameter name="deletionweight" value="-4.000000"/>
+      <parameter name="dpminexonlen" value="5"/>
+      <parameter name="dpminintronlen" value="50"/>
+      <parameter name="shortexonpenal" value="100"/>
+      <parameter name="shortintronpenal" value="100"/>
+      <parameter name="wzerotransition" value="80"/>
+      <parameter name="wdecreasedoutput" value="80"/>
+      <parameter name="leadcutoffsmode" value="RELAXED"/>
+      <parameter name="termcutoffsmode" value="STRICT"/>
+      <parameter name="cutoffsminexonlen" value="5"/>
+      <parameter name="scoreminexonlen" value="50"/>
+      <parameter name="minaveragessp" value="0.500000"/>
+      <parameter name="minalignmentscore" value="0.900000"/>
+      <parameter name="maxalignmentscore" value="1.000000"/>
+      <parameter name="mincoverage" value="0.900000"/>
+      <parameter name="maxcoverage" value="100.000000"/>
+      <parameter name="intermediate" value="False"/>
+      <parameter name="sortags" value="False"/>
+      <parameter name="sortagswf" value="1.000000"/>
+      <parameter name="first" value="0"/>
+      <parameter name="exondistri" value="False"/>
+      <parameter name="introndistri" value="False"/>
+      <parameter name="refseqcovdistri" value="False"/>
+    </parameters>
+    <overall_reference_type>ESTcDNA</overall_reference_type>
+  </header>
+  <alignment_module>
+    <total_number_ESTs_reported>0</total_number_ESTs_reported>
+    </alignment_module>
+</GTH_output>
+<!--
+$ general statistics:
+$ no chain has been computed
+$ 
+$ memory statistics:
+$ 0 bytes spliced alignments in total
+$ 0 spliced alignments have been stored
+$ 0 bytes was the average size of a spliced alignment
+$ 0 bytes predicted gene locations in total
+$ 0 predicted gene locations have been stored
+$ 0 bytes was the average size of a predicted gene location
+$ 0 megabytes was the average size of the backtrace matrix
+$ no backtrace matrix has been allocated
+$ 
+$ date finished: 2010-02-03 16:58:08
+-->
