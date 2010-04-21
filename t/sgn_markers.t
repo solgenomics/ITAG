@@ -42,7 +42,7 @@ while( my $f = $gff3_in->next_feature ) {
 }
 
 SKIP: {
-    skip 'set INTENSIVE_TESTS environment variable to run long-running, cpu-intensive tests', 1
+    skip 'set INTENSIVE_TESTS environment variable to run long-running, cpu-intensive tests', 2
         unless $ENV{INTENSIVE_TESTS};
     skip 'genomethreader not installed', 2
         unless can_run( 'gth' );
