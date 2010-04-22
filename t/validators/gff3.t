@@ -59,15 +59,16 @@ SKIP: {
         or diag $job_stdout;
     is( $job_stderr, '', 'nothing on job stderr' )
         or diag $job_stderr;
-}
 
-SKIP: {
     my $queue = $ENV{ITAG_TEST_CLUSTER_QUEUE}
         or skip 'set ITAG_TEST_CLUSTER_QUEUE to test cluster job submission', 2;
 
     local $ENV{PATH} = catdir($FindBin::RealBin, updir(), updir(), 'bin' ).":$ENV{PATH}";
     my ($stdout, $stderr) = capture {
-        $class->run_offline( $analysis, $batch );
+        eval {
+            $class->run_offline( $analysis, $batch );
+        };
+        warn $@ if $@;
     };
     is($stderr, "running gff3 validate on sgn_unigenes\n", 'got expected stderr')
         or diag "stderr was:\n$stdout";

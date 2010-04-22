@@ -4,6 +4,7 @@ use warnings;
 use base 'CXGN::ITAG::Pipeline::Analysis::OutputValidator';
 
 use Carp qw/ croak confess /;
+use English qw/ -no_match_vars /;
 
 use Data::Dumper;
 use File::Basename;
@@ -17,11 +18,6 @@ use CXGN::Tools::Run;
 use CXGN::Tools::Wget qw/wget_filter/;
 
 use CXGN::ITAG::Pipeline;
-
-# need to use these to deserialize batch and analysis objects on
-# remote hosts
-#use CXGN::ITAG::Pipeline;
-#use CXGN::ITAG::Pipeline::Analysis;
 
 sub is_intensive {1}
 
@@ -75,10 +71,10 @@ sub _make_jobfiles {
     return map {
         my $files = $_;
 
-        my $args = { self     => $self,
-                     batch    => $batch,
-                     analysis => $analysis,
-                     files    => $_
+        my $args = { self         => $self,
+                     batch        => $batch,
+                     analysis_tag => $analysis->tagname,
+                     files        => $_,
                     };
         my $arg_file = $analysis->cluster_temp( 'gff3_validate_'.(++$jobnum).'.args' );
         nstore( $args, $arg_file ) or die "$! storing args in $arg_file\n";
@@ -94,7 +90,9 @@ sub _run {
     my $args = Storable::retrieve( $argfile )
         or die "could not retrieve args from '$argfile'";
 
-    my ( $self, $batch, $analysis, $files ) = @{$args}{qw{ self batch analysis files }};
+    my ( $self, $batch, $analysis_tag, $files ) = @{$args}{qw{ self batch analysis_tag files }};
+    my $pipeline = $batch->pipeline;
+    my $analysis = $pipeline->analysis( $analysis_tag );
 
     my $ontology_file = wget_filter( $batch->pipeline->feature_ontology_url
                                         => $analysis->local_temp('ontology_file')
@@ -165,9 +163,10 @@ sub cluster_run_class_method {
   sub validator_config_file {
       return $config_file if $config_file;
       $config_file = File::Temp->new;
-      $config_file->print(<<'EOF');  $config_file->close; return $config_file } }
+      my $user = getpwuid( $UID );
+      $config_file->print(<<EOF);  $config_file->close; return $config_file } }
 # Configuration file for validate_gff3.pl
-# Author: Payan Canaran (canaran@cshl.edu)
+# Author: Payan Canaran (canaran\@cshl.edu)
 # Copyright 2006 Cold Spring Harbor Laboratory
 
 # DBI database access parameters. If these are filled in, the corresponding
@@ -225,7 +224,7 @@ sub cluster_run_class_method {
 # This script uses a temporary directory for processing. This parameter,
 # describes the location of the temporary directory.
 
-  temp_dir                  /tmp/validate_gff3
+  temp_dir                  /tmp/validate_gff3_$user
 
 # SQLite cache_size pragma
 
