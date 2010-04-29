@@ -70,6 +70,11 @@ Usage:
   -L skip script-level locking, run even if another itag_batch.pl
      job is running.  THIS CAN BE DANGEROUS.
 
+  -Q <queue name>
+     job queue to use for submitting cluster jobs.  defaults to unset,
+     which will use whatever default queue the system's `qsub` is
+     currently using
+
   Examples:
 
     #create a new batch in the current pipeline version,
@@ -388,7 +393,7 @@ sub intense_validate {
     #^ otherwise, just run the validation on each of our jobs in turn
     foreach (@vjobs) {
       my ($batch,$analysis) = @$_;
-      $analysis->run_intense_validation($batch,$opt{f});
+      $analysis->run_intense_validation($batch,{ force => $opt{f}, job_queue => $global_opt{Q} });
     }
   }
 
@@ -614,7 +619,7 @@ sub unlock_script {
 #lock_script() or die "$FindBin::Script already running, only run one at a time.\n";
 
 #parse the global options
-getopts('d:v:L',\%global_opt) or usage();
+getopts('d:v:LQ:',\%global_opt) or usage();
 
 #now execute the command
 my $opname = shift @ARGV

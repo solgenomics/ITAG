@@ -113,7 +113,7 @@ sub errors { #< return an array of errors from the cache, or from the
 
 #default run_offline uses the run_online() method to run the analysis
 sub run_offline {
-  my ($self,$analysis,$batch) = @_;
+  my ($self,$analysis,$batch,$options) = @_;
 
   my @errors = $self->run_online($analysis,$batch);
   #use Data::Dumper;

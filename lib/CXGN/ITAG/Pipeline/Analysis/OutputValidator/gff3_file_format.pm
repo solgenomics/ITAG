@@ -27,7 +27,7 @@ sub validates_file {
 }
 
 sub run_offline {
-  my ($self,$analysis,$batch) = @_;
+  my ($self,$analysis,$batch, $options ) = @_;
 
   warn "running gff3 validate on ".$analysis->tagname."\n";
 
@@ -37,7 +37,7 @@ sub run_offline {
 
 
   my @jobs =
-      map $self->cluster_run_class_method( $analysis, '_run', $_ ),
+      map $self->cluster_run_class_method( $analysis, '_run', $_, { queue => $options->{job_queue} } ),
           $self->_make_jobfiles( $analysis, $batch, \@gff3_files );
 
   # wait for jobs to finish

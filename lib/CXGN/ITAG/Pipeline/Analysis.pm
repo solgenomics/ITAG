@@ -442,7 +442,10 @@ sub locally_runnable {
   Desc : if this analysis is locally runnable, execute the analysis.
          this should produce the correct output files in the correct places.
          override this if your analysis is locally runnable.
-  Args : L<CXGN::ITAG::Pipeline::Batch> object
+  Args : L<CXGN::ITAG::Pipeline::Batch> object, hashref of options as:
+         {  job_queue => `qsub` queue for submitting analysis jobs, uses
+                         the system's default if unset
+         }
   Ret  : nothing meaningful
   Side Effects: varies
 
@@ -567,22 +570,30 @@ sub _list_validator_packages {
          on this analysis.  unless the force flag is true,
          skips analyses that report they do not need to be
          run again yet
-  Args : batch object, (optional) force flag
+  Args : batch object,
+        (optional) hashref of options:
+        { force     => boolean, default false,
+          job_queue => queue for submitting Torque/SGE jobs,
+                       uses system default if not set,
+        }
   Ret  : nothing
   Side Effects: dies on failure
 
 =cut
 
 sub run_intense_validation {
-  my ($self,$batch,$force) = @_;
+  my ($self,$batch,$options) = @_;
   #warn "intense_validate on ".$self->tagname." in batch ".$batch->batchnum.", with force '$force'\n";
+  my %options = %{$options ||= {}};
+
+  my $force = delete $options{force};
 
   #run all the validators that are intensive
   foreach my $valpackage (grep {$_->is_intensive} $self->_list_validator_packages) {
     #print $self->tagname." need to run ".$valpackage->name."?\n";
     next unless $force ||  $valpackage->needs_update($self,$batch);
     #print "yes.\n";
-    $valpackage->run_offline($self,$batch);
+    $valpackage->run_offline($self,$batch,\%options);
   }
 }
 

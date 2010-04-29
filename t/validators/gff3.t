@@ -66,7 +66,7 @@ SKIP: {
     local $ENV{PATH} = catdir($FindBin::RealBin, updir(), updir(), 'bin' ).":$ENV{PATH}";
     my ($stdout, $stderr) = capture {
         eval {
-            $class->run_offline( $analysis, $batch );
+            $class->run_offline( $analysis, $batch, { job_queue => $ENV{ITAG_TEST_CLUSTER_QUEUE} } );
         };
         warn $@ if $@;
     };
