@@ -136,6 +136,7 @@ sub run_blat {
 
     my @cmd = ( 'blat',
                 '-minIdentity=85',
+                '-maxIntron=70000',
                 $eug_cdna_seqs,
                 $loci_seqs,
                 $blat_temp
