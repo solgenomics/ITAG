@@ -99,7 +99,6 @@ sub run_gth {
     my $cdna_file = Bio::SeqIO->new( -format => 'fasta',
                                      -file   => $class->_cdna_file,
                                    );
-
     # make xml outfile just a stub
     { open my $outfile_fh, '>', $outfile
           or die "$! writing outfile $outfile";
@@ -111,195 +110,157 @@ EOF
 
     open my $gff3_out_fh, '>', $gff3_out_file
         or die "$! writing gff3 file $gff3_out_file";
-    $gff3_out_fh->print("##gff-version 3\n");
+    { my @seqregions = $class->seqregion_statements( $un_xed_seqs );
+      $gff3_out_fh->print("##gff-version 3\n@seqregions");
+    }
 
+    my $current_batch_size = 0;
+    my $batch_seqio;
+    my $print_gff3_headers = 1;
+    my $current_tempdir;
 
-    my $got_seqregion;
     while( my $seq = $cdna_file->next_seq ) {
-
-        my $tempdir = File::Temp->newdir( DIR => $work_dir );
-
-        my $temp_cdna = "$tempdir/cdna";
-        Bio::SeqIO->new( -format => 'fasta', -file => ">$temp_cdna" )
-                  ->write_seq( $seq );
-
-        my $temp_out  = "$tempdir/xml";
-
-        my @cmd =
-            ( 'gth',
-              '-xmlout',
-              '-force',
-              -autointroncutout  => 500,
-              '-gcmaxgapwidth'    => 40000, #< max gap in any alignment, this is 2x the largest intron size we have seen so far
-              -minalignmentscore => '0.90',
-              -mincoverage       => '0.90',
-              -seedlength        => 16,
-              -o                 => "$temp_out",
-              -species           => 'arabidopsis',
-              -cdna              => "$temp_cdna",
-              -genomic           => $un_xed_seqs,
-             );
-        ### command: @cmd
-        system @cmd
-            and die "$! running @cmd";
-
-        my $temp_gff3 = "$tempdir/gff3";
-
-        #now convert the gthxml to gff3
-        $class->_gthxml_to_gff3( "$temp_out", $un_xed_seqs, $seqname, "$temp_gff3" );
-
-        #append the gff3 to the overall gff3 file
-        open my $g, $temp_gff3 or die 'cannot open temp gff3??';
-        while( <$g> ) {
-            next if /^##gff-version/ || /^# no results/;
-            if( /^##sequence-region/ ) {
-                next if $got_seqregion;
-                $got_seqregion = 1;
-            }
-            $gff3_out_fh->print( $_ );
-        }
+        $class->build_and_run_batch( $work_dir, $un_xed_seqs, $seq, $cdna_file, $gff3_out_fh );
     }
 
     rmtree( $work_dir );
 }
 
 
-sub _gthxml_to_gff3 {
-    my ( $class, $outfile, $un_xed_seqs, $seqname, $gff3_out_file ) = @_;
+sub build_and_run_batch {
+    my ($class, $work_dir, $un_xed_seqs, $first_seq, $cdna_file, $gff3_out_fh ) = @_;
 
-    my $pm = $class->_parse_mode;
-    $pm eq 'alignments'
-        and die "_parse_mode() cannot be 'alignments'.  consider using 'alignments_merged'";
-    eval {
-        my $gth_in = Bio::FeatureIO->new( -format => 'gthxml', -file => $outfile, -mode => $pm );
-        my $seqlength = Bio::SeqIO->new( -format => 'fasta', -file => $un_xed_seqs )->next_seq->length;
-        my $gff3_out = $class->_open_gff3_out( $seqname, $seqlength, $gff3_out_file );
-        while ( my $f = $gth_in->next_feature ) {
-	
-            # set each feature's source to the name of the gth subclass that's running this
-            $class->_recursive_set_source( $f, $class->_source );
+    # make a temp dir for this batch
+    my $tempdir = File::Temp->newdir( DIR => $work_dir );
 
-            # do additional processing on the feature if necessary
-            # (can be implemented in subclasses)
-            $class->_process_gff3_feature( $f );
+    my $temp_cdna = "$tempdir/cdna";
+    my $batch_seqio = Bio::SeqIO->new( -format => 'fasta', -file => ">$temp_cdna" );
+    $batch_seqio->write_seq( $first_seq );
 
-            # make some ID and Parent tags in the subfeatures
-            $class->_make_gff3_id_and_parent($f);
+    # write out the proper number of sequences for this batch, it's ok
+    # if it's a little over
+    my $batch_size_target = 10_000_000; #< run the sequences 10MB at a time
+    my $batch_size = $first_seq->length;
+    while ( $batch_size < $batch_size_target && ( my $seq = $cdna_file->next_seq ) ) {
+        $batch_seqio->write_seq( $seq );
+        $batch_size += $seq->length;
+    }
 
-            # write the feature to the gff3 file
-            $gff3_out->write_feature($f);
+    # run the batch
+    my $temp_gff3 = "$tempdir/gff3";
+    #warn "running batch in $tempdir";
+
+    my @cmd =
+        ( 'gth',
+          '-gff3out',
+          '-intermediate',
+          '-force',
+          -autointroncutout  => 400,
+          '-gcmaxgapwidth'   => 40000, #< max gap in any alignment, this is 2x the largest intron size we have seen so far
+          -minalignmentscore => '0.90',
+          -mincoverage       => '0.90',
+          -seedlength        => 16,
+          -o                 => "$temp_gff3",
+          -species           => 'arabidopsis',
+          -cdna              => "$temp_cdna",
+          -genomic           => $un_xed_seqs,
+         );
+    ### command: @cmd
+    system @cmd
+        and die "$! running @cmd";
+
+    #now convert the gthxml to gff3
+    #$class->_gthxml_to_gff3( "$temp_out", $un_xed_seqs, $seqname, "$temp_gff3" );
+
+    #append the gff3 to the overall gff3 file
+    $class->_reformat_gff3( $temp_gff3, $gff3_out_fh );
+}
+
+sub _reformat_gff3 {
+    my ( $class, $temp_gff3, $gff3_out_fh ) = @_;
+
+    my %type_map = (
+        gene                    => 'match',
+        exon                    => 'match_part',
+        five_prime_splice_site  => 'five_prime_splice_site',
+        three_prime_splice_site => 'three_prime_splice_site',
+       );
+
+    my %id_map;
+
+    open my $g, $temp_gff3 or die 'cannot open temp gff3??';
+    while( my $line = <$g> ) {
+        if( $line =~ /^\s*(#+)/ ) {
+            next unless length $1 == 3;
+            gff3_uniq_print($gff3_out_fh, $line);
+        } else {
+        #parse line
+            chomp $line;
+            my @f = split /\t/,$line,9;
+            my %attrs = map { split /=/, $_, 2 } split /;/, pop @f;
+            if ( $attrs{Target} && !$attrs{Name} ) {
+                my ($tn) = $attrs{Target} =~ /(\S+)/;
+                $attrs{Name} = $tn;
+            }
+
+            # map source
+            $f[1] = $class->_source;
+
+            # map type
+            die "unknown type $f[2]"
+                unless exists $type_map{ $f[2] };
+            next unless $type_map{ $f[2] };
+            $f[2] = $type_map{ $f[2] };
+
+            #rebuild line
+            $line = join "\t", @f, join ';',map { "$_=$attrs{$_}" } sort keys %attrs;
+
+            gff3_uniq_print( $gff3_out_fh, $line."\n" );
         }
-    }; if( $EVAL_ERROR ) {
-        #workaround for a gth bug.  will probably be fixed when we upgrade gth
-        die $EVAL_ERROR unless $EVAL_ERROR =~ /not well-formed \(invalid token\)/;
-        open my $gff3, '>', $gff3_out_file;
-        print $gff3 <<EOF;
-##gff-version 3
-# no results.  genomethreader produced invalid output XML.
-EOF
-        open my $out, '>', $outfile;
     }
 }
 
 
-# does nothing here, but may be implemented in subclasses
-sub _process_gff3_feature {
+sub seqregion_statements {
+    my ($class, $seqfile) = @_;
+    my $i = Bio::SeqIO->new( -file => $seqfile, -format => 'fasta');
+    my @regions;
+    while( my $s = $i->next_seq ) {
+        push @regions, join(' ', '##sequence-region', $s->id, 1, $s->length )."\n";
+    }
+    return @regions;
 }
 
-#get the source name to use in our GFF3
-sub _source {
-  my $self = shift;
-  die "_source needs to be implemented in ".ref($self);
+sub gff3_uniq_print {
+    my ($filehandle, $line) = @_;
+
+    if( $line =~ /^\s*(#+)/ ) {
+        uniq_flush() if $line =~ /^\s*###\s+$/;
+    } elsif( $line =~ /\S/ ) {
+        $line =~ s/(?<=Parent=)([^;\s]+)/uniq_parent_id($1)/e;
+        $line =~ s/(?<=ID=)([^;\s]+)/uniq_id($1)/e;
+    }
+    $filehandle->print( $line );
+}
+{
+    my %uniq_ctr;
+    my %uniq_mapping;
+    sub uniq_id {
+        my ($id) = @_;
+        my $idx = $uniq_ctr{$id}++;
+        my $new = $id.'_'.$idx;
+        $uniq_mapping{$id} = $new;
+        return $new;
+    }
+    sub uniq_parent_id {
+        my ($id) = @_;
+        return $uniq_mapping{$id} || die "parent element with ID='$id' not found!\n";
+    }
+    sub uniq_flush {
+        %uniq_mapping = ();
+    }
 }
 
-#get the cdna file to run this against
-sub _cdna_file {
-  my $self = shift;
-  die "_cdna_file needs to be implemented in ".ref($self);
-}
-
-#get the genomic file to run this against
-sub _seq_file {
-  my ($self,$batch,$seqname) = @_;
-  my ($seq_file) = $batch->pipeline->analysis('seq')->files_for_seq($batch,$seqname);
-  $seq_file && -f $seq_file
-    or die "expected sequence file '$seq_file' not found";
-  return $seq_file;
-}
-
-#recursively set the source on a feature and its subfeatures
-sub _recursive_set_source {
-  my ($self,$feature,$newsource) = @_;
-  $feature->source($newsource);
-  $self->_recursive_set_source($_,$newsource) for $feature->get_SeqFeatures;
-}
-
-# object OR class method to
-# open a gff3 outfile with the right version and sequence-region
-sub _open_gff3_out {
-  my ($self,$seqname,$length,$outfile) = @_;
-
-  # handle for out merged output file
-  return Bio::FeatureIO->new( -file => ">$outfile",
-			      -format => 'gff',
-			      -sequence_region => Bio::SeqFeature::Generic->new( -seq_id => $seqname,
-										 -start => 1,
-										 -end => $length,
-									       ),
-			      -version => 3,
-                            );
-}
-
-
-#take a feature hierarchy, manufacture ID and Parent tags to encode
-#the hierarchical relationships, adding them to the features
-sub _make_gff3_id_and_parent {
-  my ($class,$feat,$parent_ID) = @_;
-
-  $feat->add_Annotation('Parent',Bio::Annotation::SimpleValue->new(-value => $parent_ID))
-    if defined $parent_ID;
-
-  #make a unique id for this thing, keeping our id counters on a
-  #per-analysis level
-  if(my $idstem = $class->_feature_id($feat,$parent_ID)) {
-    my $uniqid = $class->_unique_bio_annotation_id($idstem);
-    $feat->add_Annotation('ID',Bio::Annotation::SimpleValue->new(-value => $uniqid));
-    #recursively ID and Parent all the subfeatures, if any
-    $class->_make_gff3_id_and_parent($_,$uniqid) for $feat->get_SeqFeatures;
-  }
-}
-
-#given a stem, make a ID that's unique to this analysis
-#by appending a number to the stem
-my %uniq_id_ctrs;
-sub _unique_bio_annotation_id {
-  my ($class,$idstem)  = @_;
-  $uniq_id_ctrs{$class} ||= {};
-  return Bio::Annotation::SimpleValue->new(-value => $idstem.'_'.++$uniq_id_ctrs{$class}{$idstem});
-}
-
-sub _feature_id {
-  my ($class,$feat,$parent_ID)  = @_;
-  if($feat->type->name eq 'mRNA') {
-    "${parent_ID}_AGS"
-  } elsif ( $feat->type->name eq 'match') {
-    #get the target name of the first subfeature's target
-    my ($target_id) = (($feat->get_SeqFeatures)[0]->get_Annotations('Target'))[0]->target_id;
-    $target_id.'_alignment'
-  } elsif ( $feat->type->name eq 'region') {
-    'PGL'
-  } else {			#just name the feature for its source and type
-    my $src = $feat->source;
-    $src =~ s/GenomeThreader/GTH/; #< shorten the sources a little
-    $src =~ s/(tom|pot)ato/$1/; #< shorten the sources a little
-    $src.'_'.$feat->type->name;
-  }
-}
-
-#can be overridden
-sub _parse_mode {
-  'both_merged';
-}
 
 sub make_un_xed_seqfile {
   my ($class,$seqfile,$un_xed_seqs) = @_;
@@ -322,7 +283,6 @@ sub make_un_xed_seqfile {
 
   return $un_xed_seqs;
 }
-
 
 =head1 AUTHOR(S)
 

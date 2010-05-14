@@ -7,7 +7,7 @@ use File::Spec;
 
 use IPC::Cmd qw/ can_run /;
 
-use Test::More tests => 13;
+use Test::More;
 
 use CXGN::ITAG::Pipeline;
 
@@ -24,22 +24,22 @@ $temp_out->close;
 my $seqname = 'C00.6_contig21';
 
 
-# test _gthxml_to_gff3
-$class->_gthxml_to_gff3( $sgn_markers_gthxml, $un_xed_seqs, $seqname, $temp_out->filename );
-my @correct_features =
-    (
-     { Name => 'C2_At4g00560',
-       Alias => 'SGN-M8140',
-     },
-    );
-my $gff3_in = Bio::FeatureIO->new( -format => 'gff', -version => 3, -file => $temp_out->filename );
-while( my $f = $gff3_in->next_feature ) {
-    my $cf = shift @correct_features;
-    isa_ok( $f, 'Bio::AnnotatableI' );
-    while( my ($k,$v) = each %$cf ) {
-        is( ($f->annotation->get_Annotations($k))[0]->value, $v );
-    }
-}
+# # test _gthxml_to_gff3
+# $class->_gthxml_to_gff3( $sgn_markers_gthxml, $un_xed_seqs, $seqname, $temp_out->filename );
+# my @correct_features =
+#     (
+#      { Name => 'C2_At4g00560',
+#        Alias => 'SGN-M8140',
+#      },
+#     );
+# my $gff3_in = Bio::FeatureIO->new( -format => 'gff', -version => 3, -file => $temp_out->filename );
+# while( my $f = $gff3_in->next_feature ) {
+#     my $cf = shift @correct_features;
+#     isa_ok( $f, 'Bio::AnnotatableI' );
+#     while( my ($k,$v) = each %$cf ) {
+#         is( ($f->annotation->get_Annotations($k))[0]->value, $v );
+#     }
+# }
 
 SKIP: {
     skip 'set INTENSIVE_TESTS environment variable to run long-running, cpu-intensive tests', 2
@@ -55,7 +55,8 @@ SKIP: {
                     );
 
     my $out_gff3 = slurp( $temp_out );
-    like( $out_gff3, qr/Name=C2_At4g/, 'report looks good' );
+    like( $out_gff3, qr/Name=SGN-M$_;/, 'report looks good' )
+        for 1911, 7300, 315;
 
     my $out_xml = slurp( $xml_out );
     like( $out_xml, qr/no longer provided/, 'XML is stubbed out' );
@@ -63,6 +64,8 @@ SKIP: {
 #    print $out_gff3;
 }
 
+
+done_testing;
 
 
 sub slurp {
