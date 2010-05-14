@@ -280,6 +280,15 @@ sub make_un_xed_seqfile {
   return $un_xed_seqs;
 }
 
+#get the genomic file to run this against
+sub _seq_file {
+  my ($self,$batch,$seqname) = @_;
+  my ($seq_file) = $batch->pipeline->analysis('seq')->files_for_seq($batch,$seqname);
+  $seq_file && -f $seq_file
+    or die "expected sequence file '$seq_file' not found";
+  return $seq_file;
+}
+
 =head1 AUTHOR(S)
 
 Robert Buels
