@@ -114,11 +114,6 @@ EOF
       $gff3_out_fh->print("##gff-version 3\n@seqregions");
     }
 
-    my $current_batch_size = 0;
-    my $batch_seqio;
-    my $print_gff3_headers = 1;
-    my $current_tempdir;
-
     while( my $seq = $cdna_file->next_seq ) {
         $class->build_and_run_batch( $work_dir, $un_xed_seqs, $seq, $cdna_file, $gff3_out_fh );
     }
