@@ -175,8 +175,8 @@ sub _reformat_gff3 {
     my %type_map = (
         gene                    => 'match',
         exon                    => 'match_part',
-        five_prime_splice_site  => 'five_prime_splice_site',
-        three_prime_splice_site => 'three_prime_splice_site',
+        five_prime_splice_site  => undef,
+        three_prime_splice_site => undef,
        );
 
     my %id_map;
