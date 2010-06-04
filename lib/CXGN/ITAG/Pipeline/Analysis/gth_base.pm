@@ -165,9 +165,6 @@ sub build_and_run_batch {
     system @cmd
         and die "$! running @cmd";
 
-    #now convert the gthxml to gff3
-    #$class->_gthxml_to_gff3( "$temp_out", $un_xed_seqs, $seqname, "$temp_gff3" );
-
     #append the gff3 to the overall gff3 file
     $class->_reformat_gff3( $temp_gff3, $gff3_out_fh );
 }
