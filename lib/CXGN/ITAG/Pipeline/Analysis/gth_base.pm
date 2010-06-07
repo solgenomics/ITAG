@@ -151,8 +151,8 @@ sub build_and_run_batch {
           '-gff3out',
           '-intermediate',
           '-force',
-          -autointroncutout  => 400,
-          '-gcmaxgapwidth'   => 40000, #< max gap in any alignment, this is 2x the largest intron size we have seen so far
+          -autointroncutout  => 200,
+          '-gcmaxgapwidth'   => 25000, #< max gap in any alignment, this is 1.2x the largest intron size we have seen so far
           -minalignmentscore => '0.90',
           -mincoverage       => '0.90',
           -seedlength        => 16,
