@@ -4,3 +4,4 @@ Build
 MYMETA.yml
 _build/*
 *.sw?
+blib/*
