@@ -68,6 +68,7 @@ sub run {
               #augustus --species=human --hintsfile= hints.E.gff --extrinsicCfgFile=extrinsic.ME.cfg genome.fa 
               '--species=tomato',
               '--extrinsicCfgFile=extrinsic.ME.cfg',
+              '--introns=off',
               '--gff3=on',
               $temp_seq,
               { out_file    => $temp_gff,
