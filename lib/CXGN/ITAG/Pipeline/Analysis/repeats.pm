@@ -43,11 +43,11 @@ sub locally_runnable { 1 }
 sub run {
   my ($self,$batch) = @_;
 
-  my $stringent_lib = wget_filter('cxgn-resource://all_tomato_repeats'
-				  => $self->cluster_temp('all_tomato_repeats.seq')
+  my $stringent_lib = wget_filter('cxgn-resource://itag_repeats_stringent'
+				  => $self->cluster_temp('itag_repeats_stringent.seq')
 				 );
-  my $regular_lib   = wget_filter('cxgn-resource://mips_tomato_repeats',
-				  => $self->cluster_temp('mips_tomato_repeats.seq'),
+  my $regular_lib   = wget_filter('cxgn-resource://itag_repeats_normal',
+				  => $self->cluster_temp('itag_repeats_normal.seq'),
 				 );
   #warn "got repeat lib file $repeat_lib_file\n";
 
