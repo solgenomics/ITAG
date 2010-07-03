@@ -97,12 +97,14 @@ sub run_repeatmasker {
          '-q',
          $nolow ? ('-nolow') : (),
          '-xsmall',
+         -maxsize => 2000000,
          -lib      => $lib_file,
-	 -parallel => 2, #< double-proc the repeatmasker jobs, so they run fast in the time that they are not i/o bound
+	 -parallel => 4, #< double-proc the repeatmasker jobs, so they run fast in the time that they are not i/o bound
          $temp_seq_file,
          {
 	  temp_base   => $dir,
           working_dir => $dir,
+          procs_per_node => 4,
           on_completion => sub {
               my ($job) = @_;
               #cluck("completed $temp_seq_file\n");
