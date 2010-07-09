@@ -66,7 +66,7 @@ sub run {
         my $tse = CXGN::Tools::Run->run_cluster
             ( 'itag_wrapper', 'augustus',       #<assume augustus is in path
               #augustus --species=human --hintsfile= hints.E.gff --extrinsicCfgFile=extrinsic.ME.cfg genome.fa 
-              '--species=tomato',
+              '--species=tomato2',
               '--extrinsicCfgFile=extrinsic.ME.cfg',
               '--introns=off',
               '--gff3=on',
