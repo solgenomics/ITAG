@@ -538,7 +538,8 @@ sub rpsblast_m8_to_gff3 {
 # blastp_* gff3 slightly.
 sub fix_blastp_gff3 {
   $_[0] =~ s/(?<=\t|;)(\w+=)\s+/$1/g;
-  $_[0] =~ s/name=(\S+)\s+/Name=$1;Note=/;
+  $_[0] =~ s/name=(\S+)\s+/'Name='.gff3_escape($1).';Note='/e;
+  $_[0] =~ s/Note=([^;]+)/'Note='.gff3_escape($1)/e;
   #$_[0] =~ s/Name=[a-z]{2,3}\|([^\|;]+)\|/Name=$1/;
   return $_[0];
 }
