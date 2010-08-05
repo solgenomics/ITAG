@@ -540,6 +540,9 @@ sub fix_blastp_gff3 {
   $_[0] =~ s/(?<=\t|;)(\w+=)\s+/$1/g;
   $_[0] =~ s/name=(\S+)\s+/'Name='.gff3_escape($1).';Note='/e;
   $_[0] =~ s/Note=([^;]+)/'Note='.gff3_escape($1)/e;
+  $_[0] =~ s/Name="/Name=/;
+  $_[0] =~ s/Note=([^;]+)";/Note=$1;/;
+
   #$_[0] =~ s/Name=[a-z]{2,3}\|([^\|;]+)\|/Name=$1/;
   return $_[0];
 }
