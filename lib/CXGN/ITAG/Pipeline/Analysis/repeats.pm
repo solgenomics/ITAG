@@ -97,6 +97,7 @@ sub run_repeatmasker {
          '-q',
          $nolow ? ('-nolow') : (),
          '-xsmall',
+	 -engine => 'wublast',
          -maxsize => 2000000,
          -lib      => $lib_file,
 	 -parallel => 4, #< double-proc the repeatmasker jobs, so they run fast in the time that they are not i/o bound
