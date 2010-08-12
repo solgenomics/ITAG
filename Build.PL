@@ -15,7 +15,7 @@ my $build = Module::Build->new(
 
     # and now the list of perl module dependencies
     requires => {
-        perl => '5.10',
+        perl => '5.10.0',
         # right now, we have to depend on whole bioperl, like this
 #        'Bio::Root::Version' => '1.006000',
 # 	'Bio::FeatureIO' => 0,
