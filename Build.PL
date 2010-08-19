@@ -52,6 +52,7 @@ my $build = Module::Build->new(
 	'Digest::MD5' => 0,
 	'File::NFSLock' => 0,
 	'File::Temp' => 0,
+    'File::Slurp' => 0,
 	'Hash::Util' => 0,
 	'List::MoreUtils' => 0,
 	'Mail::Sendmail' => 0,
