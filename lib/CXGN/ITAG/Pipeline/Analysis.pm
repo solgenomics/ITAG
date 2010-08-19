@@ -19,7 +19,6 @@ use Module::Find ();
 
 use List::MoreUtils qw/ any all /;
 use CXGN::Tools::List qw/ str_in distinct/;
-use CXGN::Tools::File qw/file_contents/;
 use CXGN::ITAG::Tools;
 
 use CXGN::ITAG::Config;

@@ -13,7 +13,7 @@ use File::NFSLock;
 use Storable qw/ nstore retrieve /;
 
 use CXGN::Tools::List qw/ balanced_split /;
-use CXGN::Tools::File qw/file_contents/;
+use File::Slurp qw/slurp/;
 use CXGN::Tools::Run;
 use CXGN::Tools::Wget qw/wget_filter/;
 
@@ -116,7 +116,7 @@ sub _run {
 	    -ontology_file => $ontology_file,
           );
 
-        unless( file_contents($reportfile) =~ /HAS BEEN VALIDATED/ ) {
+        unless( slurp($reportfile) =~ /HAS BEEN VALIDATED/ ) {
             #record this failure
             $failures{$file} = time;
         }

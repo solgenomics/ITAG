@@ -2,7 +2,6 @@ package CXGN::ITAG::Pipeline::Analysis::OutputValidator::fasta_file_format;
 use base 'CXGN::ITAG::Pipeline::Analysis::OutputValidator';
 use File::Basename;
 use Carp;
-use CXGN::Tools::File qw/file_contents/;
 
 sub is_intensive { 1 }
 
