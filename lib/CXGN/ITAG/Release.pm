@@ -120,12 +120,12 @@ sub find {
 
   return
     sort { $b->{modtime} <=> $a->{modtime} } #< sort the results in descending order of modtime, and remember the modtimes
-    map { $_->{modtime} = (stat($_->{dir}))[9]; $_ } #< decorate with modtimes
+    map  { $_->{modtime} = (stat($_->{dir}))[9]; $_ } #< decorate with modtimes
     grep $cond_match->($_),
-    map $class->new(%$_),
+    map  $class->new(%$_),
     grep $_,
-    map parse_release_dirname($_),
-    glob(File::Spec->catfile($dirname,'*'));
+    map  parse_release_dirname($_),
+    glob ( File::Spec->catfile($dirname,'*') );
 
 }
 
