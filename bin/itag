@@ -1,0 +1,4 @@
+#!/usr/bin/env perl
+use CXGN::ITAG::CmdLine;
+CXGN::ITAG::CmdLine->run;
+
