@@ -10,7 +10,6 @@ use File::Spec;
 use File::Basename;
 
 use CXGN::DB::GFF::Versioned;
-use CXGN::Tools::Class qw/parricide/;
 use CXGN::Tools::Run;
 use CXGN::ITAG::Config;
 use CXGN::ITAG::Tools qw/ parse_release_dirname /;
@@ -616,10 +615,6 @@ sub calculate_statistics {
 Robert Buels
 
 =cut
-
-sub DESTROY {
-  return parricide(shift,our @ISA);
-}
 
 ###
 1;#do not remove
