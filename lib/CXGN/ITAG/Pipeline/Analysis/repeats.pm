@@ -60,11 +60,15 @@ sub run {
     $seq_file && -f $seq_file
       or die "expected sequence file '$seq_file' not found";
 
-    my ($hardmasked_fasta,$softmasked_fasta,$hardmasked_stringent,$softmasked_stringent) = $self->files_for_seq($batch,$_);
+    my ( $hardmasked_fasta, $softmasked_fasta, $hardmasked_stringent, $softmasked_stringent, $rm_out, $rm_out_stringent )
+        = my @files
+        = $self->files_for_seq($batch,$_);
+
+    @files == 6 or die "expecting 6 defined repeatmasker output files, only found ".@files;
 
     #now run repeatmasker with two sets of options on the cluster
-    ( $self->run_repeatmasker( $seqname, $regular_lib,   $seq_file, $hardmasked_fasta,     $softmasked_fasta,     'nolow', $job_idx++ ),
-      $self->run_repeatmasker( $seqname, $stringent_lib, $seq_file, $hardmasked_stringent, $softmasked_stringent, 0      , $job_idx++ ),
+    ( $self->run_repeatmasker( $seqname, $regular_lib,   $seq_file, $hardmasked_fasta,     $softmasked_fasta,     $rm_out,           'nolow', $job_idx++ ),
+      $self->run_repeatmasker( $seqname, $stringent_lib, $seq_file, $hardmasked_stringent, $softmasked_stringent, $rm_out_stringent,  0,      $job_idx++ ),
     )
   } $batch->seqlist;
 
@@ -76,7 +80,7 @@ sub run {
 }
 
 sub run_repeatmasker {
-    my ( $self, $seqname, $lib_file, $seq_file, $hard_file, $soft_file, $nolow, $job_idx ) = @_;
+    my ( $self, $seqname, $lib_file, $seq_file, $hard_file, $soft_file, $out_file, $nolow, $job_idx ) = @_;
 
     # make a separate dir for each cluster job
     my $dir = $self->cluster_temp($job_idx);
@@ -87,6 +91,7 @@ sub run_repeatmasker {
         or die "could not symlink $seq_file -> $temp_seq_file : $!";
     my $temp_hmf = "$temp_seq_file.hmf";
     my $temp_masked_file = "$temp_seq_file.masked";
+    my $temp_out = "$temp_seq_file.rm_out";
 
     #my $rm = CXGN::Tools::Run->run_async( qq|sleep 5; echo ">foo" > $temp_seq_file; echo ACTGACTAGCTAGCTAC >> $temp_seq_file|,
 
@@ -108,6 +113,8 @@ sub run_repeatmasker {
           procs_per_node => 4,
           on_completion => sub {
               my ($job) = @_;
+              copy( $job->out_file => $temp_out );
+
               #cluck("completed $temp_seq_file\n");
               #filter the softmasked fasta to get a hardmasked version
               if ( -f $temp_masked_file ) {
@@ -133,6 +140,7 @@ sub run_repeatmasker {
 
     return ( [$temp_masked_file => $soft_file, $rm],
              [$temp_hmf         => $hard_file, $rm],
+             [$temp_out         => $out_file,  $rm],
            )
 }
 
