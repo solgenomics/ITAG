@@ -91,7 +91,7 @@ sub run_repeatmasker {
         or die "could not symlink $seq_file -> $temp_seq_file : $!";
     my $temp_hmf = "$temp_seq_file.hmf";
     my $temp_masked_file = "$temp_seq_file.masked";
-    my $temp_out = "$temp_seq_file.rm_out";
+    my $temp_out = "$temp_seq_file.out";
 
     #my $rm = CXGN::Tools::Run->run_async( qq|sleep 5; echo ">foo" > $temp_seq_file; echo ACTGACTAGCTAGCTAC >> $temp_seq_file|,
 
@@ -113,7 +113,6 @@ sub run_repeatmasker {
           procs_per_node => 4,
           on_completion => sub {
               my ($job) = @_;
-              copy( $job->out_file => $temp_out );
 
               #cluck("completed $temp_seq_file\n");
               #filter the softmasked fasta to get a hardmasked version
