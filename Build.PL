@@ -44,7 +44,6 @@ my $build = Module::Build->new(
 # 	'CXGN::Tools::Run' => 0,
 # 	'CXGN::Tools::Script' => 0,
 # 	'CXGN::Tools::Wget' => 0,
-# 	'CXGN::VHost' => 0,
 
 	'Class::Accessor' => 0,
 	'Class::Accessor::Fast' => 0,
