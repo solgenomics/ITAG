@@ -66,17 +66,18 @@ use Pod::Usage;
 use POSIX;
 use Storable qw/ nstore retrieve /;
 
-use IO::File;
-use Hash::Util qw/ lock_hash lock_keys /;
+use Data::Dumper;
 use File::Copy;
 use File::Basename;
 use File::Temp qw/tempfile/;
+use Hash::Util qw/ lock_hash lock_keys /;
+use IO::File;
+
+use Path::Class;
 use Statistics::Descriptive;
 use Tie::Function;
 use Template;
 use URI::Escape;
-
-use Data::Dumper;
 
 use CXGN::TomatoGenome::BACPublish qw/ genbank_acc_to_seq_name seq_name_to_genbank_acc /;
 use CXGN::ITAG::Pipeline;
@@ -274,6 +275,9 @@ sub dump_data {
 	    ### go terms: $go_terms
         }
 
+        # hashref of { mRNA_name => 'complete_gff3_line' }
+        my $polypeptide_index = make_polypeptide_gff3( $a{renaming}->files_for_seq( $ctg->{batch}, $ctg->{name} ) );
+
         # fetch our human_readable_description if available
         my $human_readable_descriptions = {};
         my ( $prot_w_desc ) = $a{human_readable_description}->{obj}->files_for_seq( $ctg->{batch}, $ctg->{name} );
@@ -297,6 +301,7 @@ sub dump_data {
                       my $line = shift;
                       $line = add_name_attr( $line );
                       $line = add_functional_annotations( $line, $go_terms, $human_readable_descriptions );
+                      $line = add_polypeptides( $line, $polypeptide_index );
                       return $line;
                   },
                   errors_fatal => 1,
@@ -390,6 +395,49 @@ sub dump_data {
     # post-process all the GFF3 files in place to clean them up, sort them, add sync marks, etc.
     postprocess_gff3(  $gen_files->{$_->{seq_type}.'_fasta'}->{file},  $_->{file}  )
         foreach grep $_->{type} eq 'gff3', values %$gen_files ;
+
+    validate_polypeptide_features(
+        $gen_files->{models_gff3}->{file},
+        $gen_files->{protein_fasta}->{file},
+        $gen_files->{genomic_fasta}->{file},
+       );
+}
+
+
+sub make_polypeptide_gff3 {
+    my ( $gene_models_gff3 ) = @_;
+    $gene_models_gff3 = file( $gene_models_gff3 );
+
+    my (undef, $tempfile) = tempfile( 'polypeptides_index-XXXXXX' );
+    tie my %polypeptides, 'DB_File', $tempfile
+        or die "$! make db file $tempfile";
+
+    my $g = $gene_models_gff3->openr;
+    while( my $line = <$g> ) {
+        next if /^\s*#/;
+
+        chomp $line;
+        my @fields = split /\t/, $line, 9;
+        my %attr = map { split /=/, $_, 2 } split /;/, $fields[8];
+        my $type = $fields[2];
+
+        if( $type eq 'CDS' ) {
+            my ( $start, $end, $strand ) = @fields[3,4,6];
+        }
+    }
+
+    return %polypeptides;
+}
+
+sub add_polypeptides {
+    my ( $gff3_line, $polypeptide_index ) = @_;
+    #TODO: implement me
+    return $gff3_line;
+}
+
+sub validate_polypeptide_features {
+    my ( $gene_models_gff3, $protein_fasta, $genomic_fasta ) = @_;
+    # TODO: implement me
 }
 
 # make sure a given dumpspec is valid
