@@ -71,8 +71,6 @@ sub launch_job {
         $seq_file,
         $outfile,
         $gff3_out_file,
-        #{ err_file => $errfile,
-        #},
        );
 
     my ( $out_dest, $gff_out_dest ) = $self->files_for_seq($batch,$seqname);
