@@ -54,7 +54,7 @@ sub genome_file {
 sub locally_runnable { 1 }
 
 sub run {
-  my ($self,$batch) = @_;
+  my ( $self, $batch ) = @_;
 
   # for each seq file, set up and run an analysis job on the
   # cluster, format its output, and queue it up to be copied into
@@ -62,25 +62,11 @@ sub run {
   my @jobs;
   my @ops;
   for my $seqname ( $batch->seqlist ) {
-      my ( $outfile, $gff3_out_file ) = map $self->cluster_temp($seqname,$_), 'txt', 'gff3';
 
-      my $seq_file = $batch->pipeline->analysis('seq')->files_for_seq( $batch, $seqname );
+      my ( $job, @job_ops ) = $self->launch_job( $batch, $seqname );
 
-      my $job = $self->cluster_run_class_method( $batch,
-                                                 $seqname,
-                                                 'run_mummer',
-                                                 $seqname,
-                                                 $self->genome_file,
-                                                 $seq_file,
-                                                 $outfile,
-                                                 $gff3_out_file,
-                                                 #{ err_file => $errfile,
-                                                 #},
-                                                );
-
-      my ($out_dest,$gff_out_dest) = $self->files_for_seq($batch,$seqname);
       push @jobs, $job;
-      push @ops, [$gff3_out_file => $gff_out_dest ], [ $outfile => $out_dest ];
+      push @ops,  @job_ops;
 
       # check for any failed jobs, so that we don't have to submit
       # all the jobs before we die.  submitting all the jobs could
@@ -96,6 +82,38 @@ sub run {
 
   #atomically move the results into position
   $self->atomic_move(@ops);
+}
+
+sub launch_job {
+    my ( $self, $batch, $seqname ) = @_;
+
+    my ( $outfile, $gff3_out_file ) =
+        map { $self->cluster_temp( $seqname, $_ ) }
+       'txt', 'gff3';
+
+    my $seq_file = $batch->pipeline
+                         ->analysis('seq')
+                         ->files_for_seq( $batch, $seqname );
+
+    my $job = $self->cluster_run_class_method(
+        $batch,
+        $seqname,
+        'run_mummer',
+        $seqname,
+        $self->genome_file,
+        $seq_file,
+        $outfile,
+        $gff3_out_file,
+        #{ err_file => $errfile,
+        #},
+       );
+
+    my ( $out_dest, $gff_out_dest ) = $self->files_for_seq($batch,$seqname);
+
+    return ( $job,
+             [ $gff3_out_file => $gff_out_dest ],
+             [ $outfile       => $out_dest     ],
+           );
 }
 
 sub run_mummer {
