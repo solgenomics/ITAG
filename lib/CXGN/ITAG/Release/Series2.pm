@@ -132,9 +132,6 @@ sub get_all_files {
 				 type => 'conf',
 				 seq_type => 'protein',
 			       },
-#      readme_file_desc     => { file => assemble_release_filename("README_file_descriptions","txt"),
-# 			       desc => 'this file',
-# 			     },
 
     };
   lock_hash(%$_) foreach values %{$self->{files}};
