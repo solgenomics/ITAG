@@ -296,6 +296,35 @@ sub validate {
   }
 }
 
+register_command('force_validate' => <<EOF);
+Usage:  $FindBin::Script [global opts] force_validate <batchnum> <analysis_tag>
+
+  Force a certain analysis in a certain batch to be considered
+  validated.  This should be used only in very unusual cases.
+
+  OPTIONS
+
+   none
+
+EOF
+sub force_validate {
+  my ($batchnum,$atag) = @ARGV
+    or help('validate');
+
+  my $pipe = _open_pipe;
+  my $analysis = $pipe->analysis($atag) or die "analysis $atag not found\n";
+  my $batch   = $pipe->batch($batchnum) or die "batch $batchnum not found\n";
+
+  my $status = $analysis->uncached_status( $batch );
+  $status eq 'validating'
+      or die "$atag is in state $status, does not make sense to force_validate\n";
+
+  $analysis->force_validate( $batch );
+
+  $status = $analysis->uncached_status( $batch );
+  print "$atag\t$status\n";
+}
+
 register_command('intense_validate' => <<EOF);
 Usage:  $FindBin::Script [global opts] intense_validate [options] <batchnum> [ <analysis_tag> ]
 
