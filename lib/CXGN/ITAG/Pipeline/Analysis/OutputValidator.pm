@@ -74,6 +74,16 @@ sub needs_update {
   } @files
 }
 
+sub force_validate {
+    my ( $self, $analysis, $batch ) = @_;
+
+    for my $file ( $self->files_to_validate( $analysis, $batch ) ) {
+        my $reportfile = $self->report_filename($analysis,$batch,$file);
+        open my $f, '>', $reportfile or die "$! writing $reportfile";
+        $f->print( "FORCE VALIDATED:  WE WILL PRETEND THAT THIS FILE HAS BEEN VALIDATED\n" );
+    }
+}
+
 sub files_to_validate {
   my ($self,$analysis,$batch) = @_;
   $analysis or confess 'must pass analysis object to files_to_validate()';

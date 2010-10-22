@@ -373,6 +373,25 @@ sub status {
 }
 
 
+=head2 force_validate
+
+  Usage: $an->force_validate( $batch )
+  Desc : force an analysis in a certain batch to be considered validated.
+  Args : batch object
+  Ret  : nothing meaningful
+  Side Effects: dies on error
+
+=cut
+
+sub force_validate {
+    my ( $self, $batch ) = @_;
+
+
+    for my $validator ( $self->_list_validator_packages ) {
+	$validator->force_validate( $self, $batch );
+    }
+}
+
 =head2 uncached_status
 
   Usage:  same as status()
