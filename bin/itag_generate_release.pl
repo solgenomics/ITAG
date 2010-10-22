@@ -319,6 +319,7 @@ sub dump_data {
                 { analyses => 'infernal',
                   gff3_output_spec_index => 0,
                   release_files => ['combi_genomic_gff3','infernal_gff3'],
+                  alter_lines_with => \&generalize_infernal_types,
                 },
                 { analyses => qr/^transcripts_/i,
                   gff3_output_spec_index => 0,
@@ -1078,9 +1079,23 @@ sub get_go_terms_for_mrnas {
     return \%mrna_terms;
 }
 
+
+
 my $dbh;
 sub get_dbh {
     require CXGN::DB::Connection;
     $dbh ||= CXGN::DB::Connection->new;
 }
 
+
+
+sub generalize_infernal_types {
+    my ($line) = @_;
+    # for easier config and loading, change the type of infernal lines
+    # to 'transcript' and put the real type in rna_type
+    if( $line =~ s/INFERNAL \t ([^\t]+) \t /INFERNAL\ttranscript\t/x ) {
+        $line =~ s/[;\s]+$//;
+        $line .= ";rna_type=$1\n";
+    }
+    return $line;
+}
