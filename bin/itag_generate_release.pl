@@ -1095,8 +1095,9 @@ sub generalize_infernal_types {
     # for easier config and loading, change the type of infernal lines
     # to 'transcript' and put the real type in rna_type
     if( $line =~ s/INFERNAL \t ([^\t]+) \t /INFERNAL\ttranscript\t/x ) {
+	my $type = $1;
         $line =~ s/[;\s]+$//;
-        $line .= ";rna_type=$1\n";
+        $line .= ";rna_type=$type\n";
     }
     return $line;
 }
