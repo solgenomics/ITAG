@@ -268,7 +268,7 @@ sub _analyze_genomic_gff3 { # process the genomic gff3
                 my ($parent) = $line =~ /Parent=gene:([^;\n]+)/ or die "cannot parse parent from gff3 line:\n$line\n";
                 ### parent: $parent
                 $gene_mrna_counts{$parent}++;
-                if ( $line =~ /functional_description=/ ) {
+                if ( $line =~ /Note=/ ) {
                     $self->inc_gene_models_with_human_desc;
                 }
                 if ( my @go_terms = $line =~ /Ontology_term=([^;\n]+)/g ) {
