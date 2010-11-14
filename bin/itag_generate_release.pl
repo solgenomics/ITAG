@@ -318,7 +318,7 @@ sub dump_data {
                 },
                 { analyses => 'infernal',
                   gff3_output_spec_index => 0,
-                  release_files => ['combi_genomic_gff3','infernal_gff3'],
+                  release_files => ['combi_genomic_gff3'],
                   alter_lines_with => \&generalize_infernal_types,
                 },
                 { analyses => qr/^transcripts_/i,
