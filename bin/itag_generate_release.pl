@@ -246,7 +246,8 @@ sub dump_data {
 
         # using this sequence's AGP file, make the sol -> gb ID mapping
         # file, and write some sequence-region lines
-        if ( identifier_namespace( $ctg_name ) eq 'tomato_bac_contig' ) {
+	my $ns = identifier_namespace( $ctg_name );
+        if ( $ns && $ns eq 'tomato_bac_contig' ) {
             process_agp( $ctg_name, $ctg_agp, $gen_fh );
         }
 
