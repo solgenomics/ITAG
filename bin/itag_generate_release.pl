@@ -733,6 +733,10 @@ sub postprocess_gff3 {
   print $orig "##gff-version 3\n";
   print $orig "##$_\n" foreach @other_pragmas;
   $orig->flush();
+
+  unless( -s $temp_out_file >= (-s $gff3_file)*0.95 ) {
+      die "something wrong in postproc step, $temp_out_file is less than 95% of the size of $gff3_file";
+  }
   copy_or_die( $temp_out_file, $orig );
   close $orig;
 }
