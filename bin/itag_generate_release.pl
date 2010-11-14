@@ -694,7 +694,7 @@ sub postprocess_gff3 {
 
   #sort the gff3 file by ref sequence and start coordinate into the temp file,
   #and remove duplicates
-  open my $sg, "gff3_reformat.pl -i -S $seqs_file -U -u '-i' $gff3_file | "
+  open my $sg, "gff3_reformat.pl -l 5000 -s -i -S $seqs_file -U -u '-i' $gff3_file |"
     or die "$! running sort on file '$gff3_file'";
 
   #print the sorted output into the temp file, massaging the
