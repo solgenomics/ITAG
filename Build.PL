@@ -102,6 +102,7 @@ my $build = Module::Build->new(
 
     # and now the list of perl module dependencies
     requires => {
+        autodie => 0,
 
         # right now, we have to depend on whole bioperl, like this
        'Bio::Root::Version' => '==1.005002102',
@@ -126,9 +127,9 @@ my $build = Module::Build->new(
     },
 
     build_requires => {
+        aliased => 0,
 	'File::Temp' => 0,
 	'Test::More' => 0,
     },
 );
 $build->create_build_script;
-
