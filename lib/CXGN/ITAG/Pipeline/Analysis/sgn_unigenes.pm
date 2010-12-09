@@ -1,10 +1,6 @@
 package CXGN::ITAG::Pipeline::Analysis::sgn_unigenes;
 use strict;
 use warnings;
-use English;
-use Carp;
-
-use Bio::SeqIO;
 
 use CXGN::Tools::Wget qw/ wget_filter /;
 
