@@ -10,12 +10,8 @@ sub gff3_source {
     'ITAG_tobacco_contigs'
 }
 
-sub query_file {
-    my $class = shift;
-    return wget_filter(
-        'ftp://ftp.solgenomics.net/genomes/Nicotiana_tabacum/assembly/curr/tobacco_genome_sequences_assembly.fasta'
-            => $class->cluster_temp('tobacco_genome.fasta'),
-       );
+sub _query_file_url {
+    'ftp://ftp.solgenomics.net/genomes/Nicotiana_tabacum/assembly/curr/tobacco_genome_sequences_assembly.fasta'
 }
 
 1;

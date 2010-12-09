@@ -10,13 +10,8 @@ sub gff3_source {
     'ITAG_potato_bacs'
 }
 
-sub query_file {
-    my $class = shift;
-    return wget_filter(
-        'ftp://ftp.solgenomics.net/genomes/Solanum_tuberosum/bacs/curr/all_clone_sequence.fasta.gz'
-            => $class->cluster_temp('potato_bacs.fasta'),
-	{ gunzip => 1 }
-       );
+sub _query_file_url {
+    'ftp://ftp.solgenomics.net/genomes/Solanum_tuberosum/bacs/curr/all_clone_sequence.fasta.gz'
 }
 
 sub _accessions_file {

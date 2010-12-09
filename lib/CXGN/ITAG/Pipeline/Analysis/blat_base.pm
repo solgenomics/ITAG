@@ -17,6 +17,8 @@ L<CXGN::ITAG::Pipeline::Analysis>
 
 use base qw/ CXGN::ITAG::Pipeline::Analysis::local_cluster_base /;
 
+use CXGN::Tools::Wget 'wget_filter';
+
 sub launch_job {
     my ( $self, $batch, $seqname ) = @_;
 
@@ -47,8 +49,19 @@ sub launch_job {
            );
 }
 
+
 sub query_file {
-    die 'query_file method must be overridden in '.shift;
+    my $class = shift;
+    my $temp_file = $class->cluster_temp('bacs.fasta');
+    return $temp_file if -f $temp_file;
+
+    my $url = $class->_query_file_url;
+    my @gunzip = $url =~ /\.gz$/ ? ( { gunzip => 1 } ) : ();
+    return wget_filter(
+	$class->_query_file_url
+    	  => $temp_file,
+	 @gunzip
+       );
 }
 
 sub blat_params {

@@ -14,12 +14,8 @@ sub gff3_source {
     'ITAG_tomato_bacs'
 }
 
-sub query_file {
-    my $class = shift;
-    return wget_filter(
-        'ftp://ftp.solgenomics.net/genomes/Solanum_lycopersicum/bacs/curr/bacs.seq',
-            => $class->cluster_temp('tomato_bacs.fasta'),
-       );
+sub _query_file_url {
+    'ftp://ftp.solgenomics.net/genomes/Solanum_lycopersicum/bacs/curr/bacs.seq';
 }
 
 # munge gff3 to add aliases to the attrs
