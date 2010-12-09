@@ -180,9 +180,8 @@ sub blat2gff3 {
 
 	#start this line as a copy of the gene: eugene line, just change some things
 	my $gene_name = $tname; #< remove the splice variant number, if present, to get the gene name
-	$gene_name =~ s/(\.\d+)\.\d+$/$1/;
+	$gene_name =~ s/(\.\d+)+$//;
 	my $gene_line = $eug_genes->{$gene_name} or die "gene '$gene_name' not found in eugene annotations";
-
 
 	unless( $curr_region eq $gene_line->[0] ) {
 	  my $seqlength = $seqlengths->{$gene_line->[0]}
