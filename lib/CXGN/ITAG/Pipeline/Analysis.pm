@@ -313,6 +313,7 @@ memoize 'status',
 sub _list_work_dir {
   my ($self,$batch) = @_;
   my $d = $self->work_dir($batch);
+  return unless -d $d;
   opendir my $dh, $d or confess "$! reading dir $d";
   return map File::Spec->catfile($d,$_), grep !/^\./, readdir $dh;
 }
