@@ -200,7 +200,7 @@ sub recreate {
 
   foreach my $atag ($self->pipeline->list_analyses) {
     my $a = $self->pipeline->analysis($atag);
-    next if $a->status($self) eq 'disabled';
+    next if $a->is_disabled;
     $a->create_dirs($self);
   }
 }

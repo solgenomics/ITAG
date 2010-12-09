@@ -318,14 +318,18 @@ sub _list_work_dir {
   return map File::Spec->catfile($d,$_), grep !/^\./, readdir $dh;
 }
 
+sub is_disabled {
+    shift->_kv_file_value( def => 'disabled');
+}
+
 sub status {
   my ($self,$batch) = @_;
   $batch = $self->_check_batch($batch);
   #warn('status called for '.$self->tagname."\n");
 
-  return 'error' if $self->errors($batch);
+  return 'disabled' if $self->is_disabled;
 
-  return 'disabled' if $self->_kv_file_value( def => 'disabled');
+  return 'error' if $self->errors($batch);
 
   my ($running) = do {
     if(-f $self->_filename('control',$batch) ) {
