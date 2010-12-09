@@ -45,7 +45,7 @@ Robert Buels, E<lt>rmb32@cornell.eduE<gt>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009 The Boyce Thompson Institute for Plant Research
+Copyright 2009-2011 The Boyce Thompson Institute for Plant Research
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
