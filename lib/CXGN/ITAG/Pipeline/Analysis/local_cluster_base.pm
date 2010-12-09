@@ -4,6 +4,8 @@ use warnings;
 
 use base qw/CXGN::ITAG::Pipeline::Analysis/;
 
+use CXGN::Tools::Wget qw/ wget_filter /;
+
 sub locally_runnable { 1 }
 
 sub run {
@@ -35,6 +37,20 @@ sub run {
 
   #atomically move the results into position
   $self->atomic_move(@ops);
+}
+
+sub query_file {
+    my $class = shift;
+    my $temp_file = $class->cluster_temp('query.fasta');
+    return $temp_file if -f $temp_file;
+
+    my $url = $class->query_file_url;
+    my @gunzip = $url =~ /\.gz$/ ? ( { gunzip => 1 } ) : ();
+    return wget_filter(
+	$class->query_file_url
+    	  => $temp_file,
+	 @gunzip
+       );
 }
 
 1;

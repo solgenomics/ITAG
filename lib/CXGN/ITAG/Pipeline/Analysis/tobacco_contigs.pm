@@ -10,7 +10,7 @@ sub gff3_source {
     'ITAG_tobacco_contigs'
 }
 
-sub _query_file_url {
+sub query_file_url {
     'ftp://ftp.solgenomics.net/genomes/Nicotiana_tabacum/assembly/curr/tobacco_genome_sequences_assembly.fasta'
 }
 

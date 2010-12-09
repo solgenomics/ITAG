@@ -8,13 +8,8 @@ sub gff3_source {
     'ITAG_SL1.00_scaffolds'
 }
 
-sub genome_file {
-    my $class = shift;
-    return wget_filter(
-        'cxgn-resource://genome_SL1.00_scaffolds'
-            => $class->local_temp('SL1.00_scaffolds.fasta'),
-       );
+sub query_file_url {
+    'cxgn-resource://genome_SL1.00_scaffolds'
 }
-
 
 1;

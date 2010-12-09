@@ -67,7 +67,7 @@ sub launch_job {
         $seqname,
         'run_mummer',
         $seqname,
-        $self->genome_file,
+        $self->query_file,
         $seq_file,
         $outfile,
         $gff3_out_file,

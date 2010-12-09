@@ -14,7 +14,7 @@ sub gff3_source {
     'ITAG_tomato_bacs'
 }
 
-sub _query_file_url {
+sub query_file_url {
     'ftp://ftp.solgenomics.net/genomes/Solanum_lycopersicum/bacs/curr/bacs.seq';
 }
 
