@@ -24,9 +24,9 @@ sub launch_job {
         map { $self->cluster_temp( $seqname, $_ ) }
        'txt', 'gff3';
 
-    my $seq_file = $batch->pipeline
-                         ->analysis('seq')
-                         ->files_for_seq( $batch, $seqname );
+    my ($seq_file) = $batch->pipeline
+                           ->analysis('repeats')
+                           ->files_for_seq( $batch, $seqname );
 
     my $job = $self->cluster_run_class_method(
         $batch,
