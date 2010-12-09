@@ -364,14 +364,15 @@ sub dump_data {
                 my $index = $dump->{gff3_output_spec_index};
                 my @filehandles = @{$gen_fh}{flatten $dump->{release_files}};
 
-                my $sub = $dump->{alter_lines_with};
+                my $subs  = $dump->{alter_lines_with};
+                $subs = [$subs] unless ref $subs eq 'ARRAY';
 
                 my $file = ($arecord->{obj}->files_for_seq($ctg->{batch},$ctg->{name}))[$index];
                 #print STDERR "dumping $arecord->{name}:$file to ".join(' ',flatten $dump->{release_files})."\n";
                 unless ( $dump->{errors_fatal} || -f $file ) {
                     report_file_not_available( $ctg, $arecord, $file );
                 } else {
-                    copy_gff3_or_die( $arecord->{name}, $sub, $file, @filehandles);
+                    copy_gff3_or_die( $arecord->{name}, $subs, $file, @filehandles);
                 }
             }
         }
@@ -1016,29 +1017,20 @@ sub copy_or_die {
 
 #same as above, except do a little munging on the gff3
 sub copy_gff3_or_die {
-  my ($aname,$sub,$file,@fh) = @_;
+  my ($aname,$subs,$file,@fh) = @_;
+  $subs ||= [];
   open my $in, $file or die "$! reading $file";
   #sub check { my $l = shift; return unless $l =~ /\S/; chomp $l;  my @f = split /\s+/,$l,9; @f == 9 or $l =~ /^#/ or confess "'$l' not valid gff3";};
-  if( $sub ) {
-    while(<$in>) {
+  while(<$in>) {
       #change the source column to be ITAG_ plus the analysis name
-      my $result = $sub->($_);
+      my $result = $_;
+      $result = $_->($result) for @$subs;
       $result =~ s/^\s*(\S+)\t\S+/$1\tITAG_$aname/;
       $result .= "\n" unless $result =~ /\n$/;
       #check($result);
       for my $fh (@fh) {
-	$fh->print( $result );
+          $fh->print( $result );
       }
-    }
-  } else {
-    while(my $line = <$in>) {
-      #change the source column to be ITAG_ plus the analysis name
-      $line =~ s/^\s*(\S+)\t\S+/$1\tITAG_$aname/;
-      #check($line);
-      for my $fh (@fh) {
-	$fh->print( $line );
-      }
-    }
   }
   close $in;
 }
