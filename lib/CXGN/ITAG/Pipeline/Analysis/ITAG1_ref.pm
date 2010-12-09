@@ -5,7 +5,7 @@ use base qw/CXGN::ITAG::Pipeline::Analysis::mummer_base/;
 use CXGN::Tools::Wget qw/ wget_filter /;
 
 sub gff3_source {
-    'ITAG_ITAG1_ref'
+    'ITAG_SL1.00_scaffolds'
 }
 
 sub genome_file {
