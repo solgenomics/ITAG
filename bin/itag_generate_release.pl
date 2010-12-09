@@ -60,13 +60,15 @@ use FindBin;
 use Getopt::Std;
 use Pod::Usage;
 use POSIX;
-use Storable qw/ nstore retrieve /;
+use Storable qw/ nstore retrieve dclone /;
 
 use IO::File;
+use IO::Pipe;
 use Hash::Util qw/ lock_hash lock_keys /;
 use File::Copy;
 use File::Basename;
 use File::Temp qw/tempfile/;
+use List::Util qw/ min max /;
 use Statistics::Descriptive;
 use Tie::Function;
 use Template;
@@ -82,7 +84,7 @@ use CXGN::ITAG::Release;
 use CXGN::BioTools::AGP qw/agp_parse/;
 
 use CXGN::Tools::Identifiers qw/ parse_identifier identifier_namespace /;
-use CXGN::Tools::List qw/str_in max distinct flatten/;
+use CXGN::Tools::List qw/str_in flatten/;
 use CXGN::Tools::Text qw/commify_number/;
 
 ### parse and validate command line args
@@ -1115,4 +1117,100 @@ sub generalize_infernal_types {
         $line .= ";rna_type=$type\n";
     }
     return $line;
+}
+
+
+sub transcript_aggregating_pipe {
+    my $orig_fh = shift;
+
+    my $pipe = IO::Pipe->new;
+    if( fork ) {
+        # parent process will read the aggregated transcript gff3 from
+        # the pipe
+
+        $pipe->reader;
+        close $orig_fh;
+        return $pipe;
+
+    } else {
+        # forked process will aggregate the transcript gff3 and print
+        # into the pipe, then hard-exit
+
+        $pipe->writer;
+        _aggregate_transcript_gff3( $orig_fh, $pipe );
+        $pipe->flush;
+        POSIX::_exit(0);
+
+    }
+}
+
+sub _aggregate_transcript_gff3 {
+    my ( $in_fh, $out_fh ) = @_;
+
+    # hash the lines by Target
+    my %seen;
+    my %lines;
+    while ( <$in_fh> ) {
+        unless( /^(\S+)\tITAG_transcripts_\S+.+Target=(\S+)/ ) {
+            next;
+        }
+        next if $seen{$_}++;
+
+        my @f = split /\t/, $_, 9;
+        push @{ $lines{"$1:$2"} }, \@f;
+    }
+
+    my @groups = map {
+        my ($pts,$pte);
+        my $pfe;
+        my $curr_group = [];
+        my @groups = ($curr_group);
+        for my $l ( @$_ ) {
+            my ($fs,$fe) = @{$l}[3,4];
+            my $strand = $l->[6];
+            my ($ts,$te) = $l->[8] =~ /Target=\S+ (\d+) (\d+)/ or die;
+
+            if (    $pte
+                        && $pfe
+                            && (
+                                ( $strand eq '+'
+                                      ? abs( $pte - $ts ) > 3
+                                          : abs( $pts - $te ) > 3
+                                         )
+                                    || $fs - $pfe > 30_000
+                                   )
+                           ) {
+                $curr_group = [];
+                push @groups, $curr_group;
+            }
+            push @$curr_group, $l;
+
+            $pts = $ts;
+            $pte = $te;
+            $pfe = $fe;
+        }
+        @groups;
+    } values %lines;
+
+    # make feature groups out of them
+    for my $g ( @groups ) {
+        if ( @$g > 1 ) {
+            my $superfeature = dclone($g->[0]);
+            $superfeature->[5] = '.';
+            my ( $sf_id ) = $superfeature->[8] =~ /ID=([^;]+)/
+                or die "cannot parse line $superfeature";
+            my @tcoords = map { $_->[8] =~ /Target=\S+ (\d+) (\d+)/ } @$g;
+            @{$superfeature}[3,4] = ( min( map $_->[3], @$g ), max( map $_->[4], @$g ) );
+            $superfeature->[8] =~ s/Target=(\S+) \d+ \d+/"Target=$1 ".min(@tcoords).' '.max(@tcoords)/e
+                or die;
+
+            for ( @$g ) {
+                $_->[8] =~ s/ID=[^;]+;/Parent=$sf_id;/;
+                $_->[2] = 'match_part';
+            }
+            $out_fh->print( join "\t", @$_ ) for $superfeature, @$g;
+        } else {
+            $out_fh->print( join "\t", @$_ ) for  @$g;
+        }
+    }
 }
