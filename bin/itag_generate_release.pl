@@ -305,6 +305,14 @@ sub dump_data {
                   gff3_output_spec_index => 1,
                   release_files => [qw| combi_genomic_gff3 genefinders_gff3 |],
                 },
+                { analyses => [qw[ tobacco_contigs potato_bacs ]],
+                  gff3_output_spec_index => 1,
+                  release_files => [qw| combi_genomic_gff3 other_genomes_gff3 |],
+                },
+                { analyses => 'tomato_bacs',
+                  gff3_output_spec_index => 1,
+                  release_files => [qw| combi_genomic_gff3 genomic_reagents_gff3 |],
+                },
                 { analyses => [qw[
                                   sgn_markers
                                   sgn_loci
@@ -322,7 +330,7 @@ sub dump_data {
                   release_files => ['combi_genomic_gff3'],
                   alter_lines_with => \&generalize_infernal_types,
                 },
-                { analyses => qr/^transcripts_/i,
+                { analyses => [ qr/^transcripts_/i, 'microtom_flcdnas' ],
                   gff3_output_spec_index => 0,
                   release_files => [qw| combi_genomic_gff3 cdna_algn_gff3 |],
                 },
