@@ -336,8 +336,13 @@ sub dump_data {
                   release_files => ['combi_genomic_gff3'],
                   alter_lines_with => \&generalize_infernal_types,
                 },
-                { analyses => [ qr/^transcripts_/i, 'microtom_flcdnas' ],
+                { analyses => 'microtom_flcdnas',
                   gff3_output_spec_index => 0,
+                  release_files => [qw| combi_genomic_gff3 cdna_algn_gff3 |],
+                },
+                { analyses => qr/^transcripts_/i,
+                  gff3_output_spec_index => 0,
+                  filter_fh => \&transcript_aggregate_pipe,
                   release_files => [qw| combi_genomic_gff3 cdna_algn_gff3 |],
                 },
                 { analyses => qr/^blastp_/i,
@@ -378,7 +383,15 @@ sub dump_data {
                 unless ( $dump->{errors_fatal} || -f $file ) {
                     report_file_not_available( $ctg, $arecord, $file );
                 } else {
-                    copy_gff3_or_die( $arecord->{name}, $subs, $file, @filehandles);
+                    open my $in_fh, $file or die "$! reading $file";
+
+                    # apply any filehandle filters to the gff3 input fh
+                    if( my $filters = $dump->{filter_fh} ) {
+                        $filters = [$filters] unless ref $filters eq 'ARRAY';
+                        $in_fh = $_->( $in_fh ) for @$filters;
+                    }
+
+                    copy_gff3_or_die( $arecord->{name}, $subs, $in_fh, @filehandles);
                 }
             }
         }
@@ -1031,22 +1044,20 @@ sub copy_or_die {
 
 #same as above, except do a little munging on the gff3
 sub copy_gff3_or_die {
-  my ($aname,$subs,$file,@fh) = @_;
+  my ( $aname, $subs, $in_fh, @out_fhs ) = @_;
   $subs ||= [];
-  open my $in, $file or die "$! reading $file";
   #sub check { my $l = shift; return unless $l =~ /\S/; chomp $l;  my @f = split /\s+/,$l,9; @f == 9 or $l =~ /^#/ or confess "'$l' not valid gff3";};
-  while(<$in>) {
+  while(<$in_fh>) {
       #change the source column to be ITAG_ plus the analysis name
       my $result = $_;
       $result = $_->($result) for @$subs;
       $result =~ s/^\s*(\S+)\t\S+/$1\tITAG_$aname/;
       $result .= "\n" unless $result =~ /\n$/;
       #check($result);
-      for my $fh (@fh) {
+      for my $fh (@out_fhs) {
           $fh->print( $result );
       }
   }
-  close $in;
 }
 
 # couple of functions for aggregating and reporting concisely what files are not available
