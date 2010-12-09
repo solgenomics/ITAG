@@ -1,4 +1,4 @@
-package CXGN::ITAG::Pipeline::Analysis::ITAG1_ref;
+package CXGN::ITAG::Pipeline::Analysis::itag1_ref;
 use strict;
 use warnings;
 use base qw/CXGN::ITAG::Pipeline::Analysis::mummer_base/;
