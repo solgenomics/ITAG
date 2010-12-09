@@ -289,12 +289,16 @@ sub dump_data {
                   },
                   errors_fatal => 1,
                 },
+                { analyses => 'augustus',
+                  gff3_output_spec_index => 0,
+                  alter_lines_with => [ \&add_name_attr, \&filter_augustus ],
+                  release_files => [qw| combi_genomic_gff3 genefinders_gff3 |],
+                },
                 { analyses => [qw[ geneid_tomato
                                    genemark_ath
                                    genemark_tom
                                    glimmerhmm_ath
                                    glimmerhmm_tomato
-                                   augustus
                                  ]
                               ],
                   gff3_output_spec_index => 0,
@@ -612,6 +616,14 @@ sub add_name_attr {
 
     return $line;
 }
+
+# skips gff3 lines of type transcription_*_site or intron
+sub filter_augustus {
+    my $line = shift;
+    return '' if/ \t ( transcription_(start|end)_site | intron ) \t /x;
+    return $line;
+}
+
 
 # given a fasta file containing the functional description in the
 # description line, return a hashref of { gene_name => 'desc string', ... }
