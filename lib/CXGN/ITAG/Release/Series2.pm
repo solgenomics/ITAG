@@ -78,7 +78,7 @@ sub get_all_files {
 			       seq_type => 'genomic',
 			     },
      genefinders_gff3     => { file => $self->_assemble_release_filename("de_novo_gene_finders","gff3"),
-			       desc => 'GFF version 3 file containing predictions from several de novo gene finders.  These were integrated into the final gene models by EuGene.',
+			       desc => 'GFF version 3 file containing predictions from several de novo gene finders.  These are intermediate data, used by EuGene to decide the final consensus gene models.',
 			       type => 'gff3',
 			       seq_type => 'genomic',
 			     },
