@@ -85,6 +85,10 @@ sub run_blat {
 
 }
 
+sub munge_gff3 {
+    #my ( $class, $args, $gff3, $attr ) = @_;
+}
+
 
 sub blat2gff3 {
     my ( $class, %args ) = @_;
@@ -124,6 +128,8 @@ sub blat2gff3 {
                 Name   => $qname,
                 Target => "$qname $qstart $qend +",
                );
+
+            $class->munge_gff3( \%args, \@gff3, \%attr );
 
             push @gff3, join( ';', map { "$_=$attr{$_}" } sort keys %attr );
 
