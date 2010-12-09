@@ -25,10 +25,14 @@ sub query_file {
 # munge gff3 to add aliases to the attrs
 sub munge_gff3 {
     my ( $class, $args, $gff3, $attrs ) = @_;
-    my $aliases = $class->_get_aliases( $attrs{Name} );
+    my $name = $attrs->{Name};
+    my $aliases = $class->_get_aliases( $name );
     if( @$aliases ) {
-        $attrs{Name} = shift @$aliases;
-        $attrs{Alias} = join ',', @$aliases;
+        $attrs->{Name} = shift @$aliases;
+        $attrs->{Alias} = join ',', @$aliases;
+        if( my $d = $class->_get_defline( $name ) ) {
+            $attrs->{Note} ||= $d;
+        }
     }
 }
 
@@ -48,10 +52,12 @@ sub _load_deflines {
         my ( $bac, $defline ) = $l =~ /^>(\S+)\s*(.+)/
             or next;
         chomp $defline;
+        $deflines{$bac} = $defline;
     }
 }
 sub _get_defline {
     my ( $class, $bac ) = @_;
+    $class->_load_deflines( $class->query_file ) unless %deflines;
     return $deflines{$bac};
 }
 
@@ -72,7 +78,12 @@ sub _load_aliases {
 }
 sub _get_aliases {
     my ( $class, $bacname ) = @_;
+    $class->_load_aliases unless %aliases;
     return $aliases{$bacname} || [];
+}
+sub _all_aliases {
+    shift->_load_aliases unless %aliases;
+    return %aliases;
 }
 
 1;
