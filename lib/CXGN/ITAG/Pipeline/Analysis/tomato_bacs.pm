@@ -4,7 +4,7 @@ use warnings;
 
 use autodie ':all';
 
-use base qw/CXGN::ITAG::Pipeline::Analysis::blat_base/;
+use base qw/CXGN::ITAG::Pipeline::Analysis::mummer_base/;
 
 use List::MoreUtils 'uniq';
 
@@ -16,6 +16,13 @@ sub gff3_source {
 
 sub query_file_url {
     'ftp://ftp.solgenomics.net/genomes/Solanum_lycopersicum/bacs/curr/bacs.seq';
+}
+
+sub run_mummer {
+    my $self = shift;
+    my $seq_file = $_[2];
+    $self->_load_deflines( $seq_file );
+    $self->SUPER::run_mummer(@_);
 }
 
 # munge gff3 to add aliases to the attrs
