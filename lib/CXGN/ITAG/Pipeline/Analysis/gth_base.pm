@@ -205,6 +205,9 @@ sub _reformat_gff3 {
             next unless $type_map{ $f[2] };
             $f[2] = $type_map{ $f[2] };
 
+	    # munge the line if necessary
+	    $class->munge_gff3( \@f, \%attrs );
+
             #rebuild line
             $line = join "\t", @f, join ';',map { "$_=$attrs{$_}" } sort keys %attrs;
 
@@ -213,6 +216,7 @@ sub _reformat_gff3 {
     }
 }
 
+sub munge_gff3 {}
 
 sub seqregion_statements {
     my ($class, $seqfile) = @_;

@@ -5,6 +5,7 @@ use English;
 use Carp;
 
 use Bio::SeqIO;
+use URI::Escape;
 
 use CXGN::Marker;
 use CXGN::Tools::Wget qw/ wget_filter /;
@@ -46,11 +47,14 @@ sub _cdna_file {
       $dbh ||= CXGN::DB::Connection->new;
   }
 }
-sub _process_gff3_feature {
-    my ($class, $feature) = @_;
+sub munge_gff3 {
+    my ($class, $fields, $attrs) = @_;
 
-    my $annotation = $feature->annotation;
-    my $id = ($annotation->get_Annotations('Target'))[0]->target_id;
+    # only use munge 'match' features
+    return unless $fields->[2] eq 'match';
+
+    my ($id) = $attrs->{Target} =~ /^(\S+)/
+	or return;
 
     my $marker =  $id =~ /SGN-M(\d+)/
         ? CXGN::Marker->new( $class->_dbh, $1 )
@@ -59,9 +63,9 @@ sub _process_gff3_feature {
     push @names, 'SGN-M'.$marker->marker_id;
     my $primary_name = shift @names;
 
-    $annotation->add_Annotation( Name  => Bio::Annotation::SimpleValue->new( -value => $primary_name ) );
-    $annotation->add_Annotation( Alias => Bio::Annotation::SimpleValue->new( -value => $_ ) ) for @names;
-    $annotation->add_Annotation( Note  => Bio::Annotation::SimpleValue->new( -value => "marker name(s): ".join(', ',$primary_name, @names) ) );
+    $attrs->{Name} = $primary_name;
+    $attrs->{Alias} = join( ',', map uri_escape($_), @names ) if @names;
+    $attrs->{Note} = "marker name(s): ".join(', ',$primary_name, @names);
 
     return;
 }
