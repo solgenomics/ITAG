@@ -226,31 +226,45 @@ sub _mummer_to_gff3 {
             $_ = $match->{q_seq_len} - $_ + 1 for $start, $end;
         }
 
+        my @fields = (
+            $match->{query},
+            $class->gff3_source,
+            'match',
+            $start,
+            $end,
+            '.',
+            ( $match->{query_reversed} ? '-' : '+' ),
+            '.',
+           );
+
+        my %attrs = (
+            Name   => $match->{subject},
+            Target => join( ' ',
+                            $match->{subject},
+                            $match->{s_start},
+                            ($match->{s_start} + $match->{match_len} - 1 ),
+                            '+',
+                           ),
+
+           );
+
+        $class->munge_gff3( {}, \@fields, \%attrs );
+
         $gff_fh->print( join( "\t",
-                              $match->{query},
-                              $class->gff3_source,
-                              'match',
-                              $start,
-                              $end,
-                              '.',
-                              ( $match->{query_reversed} ? '-' : '+' ),
-                              '.',
+                              @fields,
                               join( ';',
-                                    'Name='.$match->{subject},
-                                    'Target='
-                                      .$match->{subject}
-                                      .' '.$match->{s_start}
-                                      .' '.($match->{s_start} + $match->{match_len} - 1 )
-                                      .' +'
-                                  ),
+                                    map { "$_=$attrs{$_}" }
+                                    sort keys %attrs
+                                   )
                              ),
-                        "\n"
+                        "\n",
                        );
     }
 
     return;
 }
 
+sub munge_gff3 {} #< default does no gff3 munging
 
 # returns arrayref as
 #  [
