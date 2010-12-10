@@ -1,15 +1,18 @@
 package CXGN::ITAG::Pipeline::Analysis::mummer_base;
 use strict;
 use warnings;
-use English;
-use Carp;
+
+use autodie ':all';
 
 use Path::Class;
-use File::Basename;
 
 use Bio::SeqIO;
 
+use File::NFSLock;
+use Fcntl qw( LOCK_EX LOCK_NB );
+
 use CXGN::Tools::Run;
+use CXGN::Tools::List 'balanced_split_sizes';
 
 =head1 NAME
 
@@ -51,34 +54,93 @@ sub genome_file {
 
 ######## implemented methods
 
-sub launch_job {
-    my ( $self, $batch, $seqname ) = @_;
+sub run {
+  my ( $self, $batch ) = @_;
 
-    my ( $outfile, $gff3_out_file ) =
-        map { $self->cluster_temp( $seqname, $_ ) }
-       'txt', 'gff3';
+  # for each seq file, set up and run an analysis job on the
+  # cluster, format its output, and queue it up to be copied into
+  # place
+  my @jobs;
+  my @move_files;
+  for my $seqname ( $batch->seqlist ) {
 
-    my $seq_file = $batch->pipeline
-                         ->analysis('seq')
-                         ->files_for_seq( $batch, $seqname );
+      my ( $outfile, $gff3_out_file ) =
+          map { $self->cluster_temp( $seqname, $_ ) }
+          'txt', 'gff3';
 
-    my $job = $self->cluster_run_class_method(
-        $batch,
-        $seqname,
-        'run_mummer',
-        $seqname,
-        $self->query_file,
-        $seq_file,
-        $outfile,
-        $gff3_out_file,
-       );
+      push @jobs, $self->launch_jobs( $batch, $seqname, $outfile, $gff3_out_file );
 
-    my ( $out_dest, $gff_out_dest ) = $self->files_for_seq($batch,$seqname);
+      my ( $out_dest, $gff_out_dest ) =
+          $self->files_for_seq( $batch, $seqname );
 
-    return ( $job,
-             [ $gff3_out_file => $gff_out_dest ],
-             [ $outfile       => $out_dest     ],
+      push @move_files, [ $gff3_out_file => $gff_out_dest ],
+                        [ $outfile       => $out_dest     ];
+
+      # check for any failed jobs, so that we don't have to submit
+      # all the jobs before we die.  submitting all the jobs could
+      # take a very long time if there are many jobs, because the
+      # job submission will block and wait for the torque server to
+      # clear a bit if there are too many jobs in its queue.
+      $_->alive for @jobs;
+  }
+
+  # wait for all the jobs to finish (also running their completion hooks)
+  $_->wait for @jobs;
+
+  #atomically move the results into position
+  $self->atomic_move( @move_files );
+}
+
+sub launch_jobs {
+    my ( $self, $batch, $seqname, $outfile, $gff3_out_file ) = @_;
+
+    my $reference_seq_file =
+        $batch->pipeline
+              ->analysis('seq')
+              ->files_for_seq( $batch, $seqname );
+
+    # count the seqs in the file
+    my $count = $self->_seq_count( $self->query_file );
+
+    # split into 15 jobs (or fewer if fewer than 15 seqs)
+    my $job_sizes = balanced_split_sizes( 15, $count );
+
+    my $query_seqs = Bio::SeqIO->new( -file => $self->query_file, -format => 'fasta' );
+
+    # make the seq files and cluster jobs for each batch of query seqs
+    my @jobs;
+    for( my $job_number = 0; $job_number < @$job_sizes; $job_number++ ) {
+        my $job_size = $job_sizes->[$job_number];
+
+        my $job_seq_file = $self->local_temp( $seqname, "query$job_number" );
+        my $job_seqs = Bio::SeqIO->new( -file => ">$job_seq_file", -format => 'fasta' );
+
+        $job_seqs->write_seq( $query_seqs->next_seq )
+            for 1..$job_size;
+
+        # each of these jobs will append to $outfile and $gff3_outfile (with locking)
+        push @jobs, $self->cluster_run_class_method(
+            $batch,
+            $seqname,
+            'run_mummer',
+            $seqname,
+            $job_seq_file,
+            $reference_seq_file,
+            $outfile,
+            $gff3_out_file,
            );
+    }
+
+    return @jobs;
+}
+sub _seq_count {
+    my ( $file ) = @_;
+    open my $f, '<', $file;
+    my $c = 0;
+    while( my $l = <$f> ) {
+        $c++ if $l =~ /^>/;
+    }
+    return $c;
 }
 
 sub run_mummer {
@@ -103,13 +165,19 @@ sub run_mummer {
               my $mummer_results = $class->_parse_mummer( $job->out_file );
 
               # print our outfile
-              my $job_out = file( $job->out_file )->openr;
-              my $out_fh  = file( $outfile )->openw;
-              $out_fh->print( $_ ) while <$job_out>;
+              {
+                  my $outfile_lock = File::NFSLock->new( $job->out_file, LOCK_EX|LOCK_NB );
+                  my $job_out = file( $job->out_file )->openr;
+                  my $out_fh  = file( $outfile )->open('>>');
+                  $out_fh->print( $_ ) while <$job_out>;
+              }
 
               #convert the mummer results to gff3
-              my $gff_fh = file($gff3_outfile)->openw;
-              $class->_mummer_to_gff3( $mummer_results, $gff_fh );
+              {
+                  my $gff3_lock = File::NFSLock->new( "$gff3_outfile", LOCK_EX|LOCK_NB );
+                  my $gff_fh = file($gff3_outfile)->open('>>');
+                  $class->_mummer_to_gff3( $mummer_results, $gff_fh );
+              }
           },
         },
        )
@@ -120,16 +188,20 @@ sub run_mummer {
 sub _mummer_to_gff3 {
     my ( $class, $mummer_results, $gff_fh ) = @_;
 
-    $gff_fh->print(<<'');
-##gff3-version 3
-
     return unless @$mummer_results;
 
-    my $seq_length = $mummer_results->[0]->{q_seq_len}
-        or die "must run mummer with -L switch to include sequence lengths in output";
+    # print gff version and sequence-region pragmas if this is the
+    # first gff3 in the file
+    unless( $gff_fh->tell ) {
+        $gff_fh->print(<<'');
+##gff3-version 3
 
-    $gff_fh->print(<<"");
+        my $seq_length = $mummer_results->[0]->{q_seq_len}
+            or die "must run mummer with -L switch to include sequence lengths in output";
+        $gff_fh->print(<<"");
 ##sequence-region $mummer_results->[0]->{query} 1 $seq_length
+
+    }
 
     for my $match ( @$mummer_results ) {
         my ( $start, $end ) = ( $match->{q_start}, $match->{q_start} + $match->{match_len} - 1 );
