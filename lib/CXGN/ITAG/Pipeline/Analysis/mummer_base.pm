@@ -57,6 +57,8 @@ sub genome_file {
 sub run {
   my ( $self, $batch ) = @_;
 
+  my @query_files = $self->split_query;
+
   # for each seq file, set up and run an analysis job on the
   # cluster, format its output, and queue it up to be copied into
   # place
@@ -68,7 +70,7 @@ sub run {
           map { $self->cluster_temp( $seqname, $_ ) }
           'txt', 'gff3';
 
-      push @jobs, $self->launch_jobs( $batch, $seqname, $outfile, $gff3_out_file );
+      push @jobs, $self->launch_jobs( $batch, $seqname, \@query_files, $outfile, $gff3_out_file );
 
       my ( $out_dest, $gff_out_dest ) =
           $self->files_for_seq( $batch, $seqname );
@@ -91,35 +93,45 @@ sub run {
   $self->atomic_move( @move_files );
 }
 
-sub launch_jobs {
-    my ( $self, $batch, $seqname, $outfile, $gff3_out_file ) = @_;
-
-    my $reference_seq_file =
-        $batch->pipeline
-              ->analysis('seq')
-              ->files_for_seq( $batch, $seqname );
+sub split_query {
+    my ( $self ) = @_;
 
     # count the seqs in the file
     my $count = $self->_seq_count( $self->query_file );
 
-    # split into 15 jobs (or fewer if fewer than 15 seqs)
-    my $job_sizes = balanced_split_sizes( 15, $count );
+    # split into 20 jobs (or fewer if fewer than 20 seqs)
+    my $job_sizes = balanced_split_sizes( 20, $count );
 
     my $query_seqs = Bio::SeqIO->new( -file => $self->query_file, -format => 'fasta' );
 
     # make the seq files and cluster jobs for each batch of query seqs
-    my @jobs;
+    my @files;
     for( my $job_number = 0; $job_number < @$job_sizes; $job_number++ ) {
         my $job_size = $job_sizes->[$job_number];
 
-        my $job_seq_file = $self->local_temp( $seqname, "query$job_number" );
+        my $job_seq_file = $self->cluster_temp( 'query_seqs', "$job_number.fasta" );
         my $job_seqs = Bio::SeqIO->new( -file => ">$job_seq_file", -format => 'fasta' );
 
         $job_seqs->write_seq( $query_seqs->next_seq )
             for 1..$job_size;
 
-        # each of these jobs will append to $outfile and $gff3_outfile (with locking)
-        push @jobs, $self->cluster_run_class_method(
+	push @files, $job_seq_file;
+    }
+
+    return @files;
+}
+
+sub launch_jobs {
+    my ( $self, $batch, $seqname, $query_files, $outfile, $gff3_out_file ) = @_;
+
+    my ( $reference_seq_file ) =
+        $batch->pipeline
+              ->analysis('seq')
+              ->files_for_seq( $batch, $seqname );
+
+    return map {
+	my $job_seq_file = $_;
+	$self->cluster_run_class_method(
             $batch,
             $seqname,
             'run_mummer',
@@ -128,13 +140,11 @@ sub launch_jobs {
             $reference_seq_file,
             $outfile,
             $gff3_out_file,
-           );
-    }
-
-    return @jobs;
+           )
+    } @$query_files;
 }
 sub _seq_count {
-    my ( $file ) = @_;
+    my ( $class, $file ) = @_;
     open my $f, '<', $file;
     my $c = 0;
     while( my $l = <$f> ) {
