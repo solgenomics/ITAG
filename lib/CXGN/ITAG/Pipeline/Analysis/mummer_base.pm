@@ -172,6 +172,7 @@ sub run_mummer {
 
         { die_on_destroy => 1,
           working_dir => File::Spec->tmpdir,
+	  vmem => '1500mb',
           on_completion => sub {
               my $job = shift;
               my $mummer_results = $class->_parse_mummer( $job->out_file );
