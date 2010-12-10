@@ -206,7 +206,7 @@ sub _mummer_to_gff3 {
     # first gff3 in the file
     unless( $gff_fh->tell ) {
         $gff_fh->print(<<'');
-##gff3-version 3
+##gff-version 3
 
         my $seq_length = $mummer_results->[0]->{q_seq_len}
             or die "must run mummer with -L switch to include sequence lengths in output";
