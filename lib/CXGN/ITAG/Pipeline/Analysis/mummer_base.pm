@@ -10,6 +10,7 @@ use Bio::SeqIO;
 
 use File::NFSLock;
 use Fcntl qw( LOCK_EX LOCK_NB );
+use List::Util qw/shuffle/;
 
 use CXGN::Tools::Run;
 use CXGN::Tools::List 'balanced_split_sizes';
@@ -57,7 +58,8 @@ sub genome_file {
 sub run {
   my ( $self, $batch ) = @_;
 
-  my @query_files = $self->split_query;
+  # try to avoid having all the big stuff on one node
+  my @query_files = shuffle $self->split_query;
 
   # for each seq file, set up and run an analysis job on the
   # cluster, format its output, and queue it up to be copied into
@@ -100,7 +102,7 @@ sub split_query {
     my $count = $self->_seq_count( $self->query_file );
 
     # split into 20 jobs (or fewer if fewer than 20 seqs)
-    my $job_sizes = balanced_split_sizes( 20, $count );
+    my $job_sizes = balanced_split_sizes( 50, $count );
 
     my $query_seqs = Bio::SeqIO->new( -file => $self->query_file, -format => 'fasta' );
 
