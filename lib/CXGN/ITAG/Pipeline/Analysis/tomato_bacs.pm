@@ -25,7 +25,7 @@ sub munge_gff3 {
     my $aliases = $class->_get_aliases( $name );
     if( @$aliases ) {
         $attrs->{Name} = shift @$aliases;
-        $attrs->{Alias} = join ',', @$aliases;
+        $attrs->{Alias} = join ',', @$aliases if @$aliases;
         if( my $d = $class->_get_defline( $name ) ) {
             $attrs->{Note} ||= $d;
         }
