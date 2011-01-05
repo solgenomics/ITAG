@@ -151,6 +151,12 @@ SL2.30ch00	ITAG_genome	match	21773029	21779988	.	-	.	Name=C03SLm0006J07.1;Target
 
     my $seq_file = tempfile_containing( ">BarSequence\n".substr( $random_dna, 123, 4222 )."\n" );
 
+    SKIP : {
+    eval {
+        mummer_base->run_mummer( 'BarSequence', $genome_fasta, $seq_file, $temp_out, $temp_gff3 );
+    };
+    skip "mummer not present", 2 if $@;
+
     mummer_base->run_mummer( 'BarSequence', $genome_fasta, $seq_file, $temp_out, $temp_gff3 );
     is( file($temp_out)->slurp, <<'', 'right mummer out' );
 > BarSequence  Len = 4222
@@ -163,6 +169,7 @@ SL2.30ch00	ITAG_genome	match	21773029	21779988	.	-	.	Name=C03SLm0006J07.1;Target
 ##sequence-region BarSequence 1 4222
 BarSequence	ITAG_genome	match	124	4345	.	+	.	Name=FooGenome;Target=FooGenome 1 4222 +
 
+    }
 
 }
 
