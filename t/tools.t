@@ -22,6 +22,12 @@ BEGIN {
 		     'foo/bar/AC123456.1.repeatmasker.itag002.fasta' => undef,
 		    );
   our %dir_tests = (
+		    'ITAG2.10_release' =>
+		    { releasenum => '2.10',
+		      pre => '',
+		      devel => '',
+		      basename => 'ITAG2.10_release',
+		    },
 		    ITAG3_release =>
 		    { releasenum => 3,
 		      pre => '',
@@ -33,6 +39,12 @@ BEGIN {
 		      pre => '',
 		      devel => '',
 		      basename => 'ITAG3_release',
+		    },
+		    'ITAG2.2_pre_release' =>
+		    { releasenum => '2.2',
+		      pre => 1,
+		      devel => '',
+		      basename => 'ITAG2.2_pre_release',
 		    },
 		    'ITAG3_pre_release' =>
 		    { releasenum => 3,

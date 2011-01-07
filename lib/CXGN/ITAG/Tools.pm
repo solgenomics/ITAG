@@ -250,7 +250,7 @@ sub parse_kv_file {
   Desc : parse the directory name of an ITAG release directory
   Args : directory name string, either at the end of a path or alone
   Ret  : hashref as:
-         {  releasenum => integer release number, or 0 if a devel release
+         {  releasenum => decimal release number, or 0 if a devel release
             pre     => boolean flag of whether this is a prerelease,
             devel   => boolean flag of whether this is a development release,
             dir     => original dir passed in, for your convenience
@@ -321,7 +321,7 @@ sub assemble_release_tag {
   if( $p->{devel} ) {
     return "ITAG_devel$pre";
   } else {
-    $p->{releasenum} && $p->{releasenum} =~ /^\d+$/ && $p->{releasenum} > 0 or croak "releasenum must be a positive integer, not '$p->{releasenum}'\n";
+    $p->{releasenum} && $p->{releasenum} =~ /^\d+(\.\d+)?$/ && $p->{releasenum} > 0 or croak "releasenum must be a positive integer or decimal, not '$p->{releasenum}'\n";
     return "ITAG$p->{releasenum}${pre}";
   }
 }
