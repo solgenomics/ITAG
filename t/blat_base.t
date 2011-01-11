@@ -39,13 +39,19 @@ ok( scalar( blat_base->blat_params ), 'blat_params returned something' );
 ok( scalar( blat_base->gff3_source ), 'gff3_source returned something' );
 
 #test run_blat
-blat_base->run_blat(
-    'C12.5_contig10',
-    file(qw( t data sgn_markers.subseqs )),
-    file(qw( t data sgn_markers.un_xed_seqs )),
-    $t1,
-    $t2,
-   );
+
+SKIP : {
+eval {
+    blat_base->run_blat(
+        'C12.5_contig10',
+        file(qw( t data sgn_markers.subseqs )),
+        file(qw( t data sgn_markers.un_xed_seqs )),
+        $t1,
+        $t2,
+    );
+};
+
+skip "no blat", 2 if $@;
 
 is( $t1->slurp, <<EOT, 'got right psl from blat' );
 psLayout version 3
@@ -58,14 +64,16 @@ match	mis- 	rep. 	N's	Q gap	Q gap	T gap	T gap	strand	Q        	Q   	Q    	Q  	T 
 107	0	0	0	1	77	1	131	+	bar	2203	1270	1454	C12.5_contig10	134255	2766	3004	2	57,50,	1270,1404,	2766,2954,
 EOT
 
-is( $t2->slurp, <<'', 'translated into right gff3' );
+is( $t2->slurp, <<GFF, 'translated into right gff3' );
 ##gff-version 3
 C12.5_contig10	ITAG_blat_base	match	1381	1714	1.00	+	.	Name=foo;Target=foo 1 334 +
 C12.5_contig10	ITAG_blat_base	match	3541	5741	1.00	+	.	Name=bar;Target=bar 1 2203 +
 C12.5_contig10	ITAG_blat_base	match	2767	3004	1.00	+	.	Name=bar;Target=bar 1271 1454 +
+GFF
+
+}
 
 done_testing;
-
 
 # make a tempfile, shove it into a Path::Class::File so it does not
 # get destroyed, and return the Path::Class::File
