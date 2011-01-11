@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More;
+use Test::Most;
 
 use IO::Scalar;
 
@@ -129,8 +129,8 @@ use aliased 'CXGN::ITAG::Pipeline::Analysis::mummer_base';
         IO::Scalar->new( \$test_gff3 ),
        );
 
-    is( $test_gff3, <<"", 'got right test gff3' );
-##gff3-version 3
+    eq_or_diff( $test_gff3, <<"", 'got right test gff3' );
+##gff-version 3
 ##sequence-region SL2.30ch00 1 21839854
 SL2.30ch00	ITAG_genome	match	71156	73918	.	+	.	Name=C03HBa0060B10.1;Target=C03HBa0060B10.1 16474710 16477472 +
 SL2.30ch00	ITAG_genome	match	21821410	21822580	.	-	.	Name=C03SLe0022L21.1;Target=C03SLe0022L21.1 4332044 4333214 +

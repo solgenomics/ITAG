@@ -15,7 +15,10 @@ my $build = Module::Build->new(
 
     # and now the list of perl module dependencies
     requires => {
-        perl => '5.10.0',
+        perl              => '5.10.0',
+        'File::Temp'      => 0,
+        'List::MoreUtils' => 0,
+        'Memoize'         => 0,
         # right now, we have to depend on whole bioperl, like this
        'Bio::Root::Version' => '==1.005002102',
 #  	'Bio::FeatureIO' => 0,
@@ -32,15 +35,11 @@ my $build = Module::Build->new(
 # 	'CXGN::Tools::List' => 0,
 # 	'CXGN::Tools::Run' => 0,
 # 	'CXGN::Tools::Wget' => 0,
-
-	'File::Temp' => 0,
-	'List::MoreUtils' => 0,
-	'Memoize' => 0,
     },
 
     build_requires => {
-	'File::Temp' => 0,
-	'Test::More' => 0,
+        'File::Temp' => 0,
+        'Test::Most' => 0,
     },
 );
 $build->create_build_script;
