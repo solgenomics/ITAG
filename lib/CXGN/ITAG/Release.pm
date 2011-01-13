@@ -119,17 +119,17 @@ sub _resolve_release_class {
 sub find {
   my ($class,%args) = @_;
 
-  my $dirname = $class->releases_root_dir;
+  my $dirname = delete $args{dir} || $class->releases_root_dir;
 
   #subroutine to check if a given release matches the search conditions
   my $cond_match = sub {
     my ($rel) = @_;
-    my %ac_map = qw/ pre is_pre_release devel is_devel_release releasenum release_number current is_current_release/;
-        foreach my $k (keys %args) {
-      my $v = $args{$k};
-      my $ac_name = $ac_map{$k};
-      $ac_name or croak "invalid condition '$k'";
-      return 0 unless $rel->$ac_name eq $v;
+    my %ac_map = qw/ pre is_pre_release devel is_devel_release releasenum release_number current is_current_release /;
+    foreach my $k (keys %args) {
+        my $v = $args{$k};
+        my $ac_name = $ac_map{$k};
+        $ac_name or croak "invalid condition '$k'";
+        return 0 unless $rel->$ac_name eq $v;
     }
     return 1;
   };
