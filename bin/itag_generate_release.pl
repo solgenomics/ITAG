@@ -344,7 +344,7 @@ sub dump_data {
                   alter_lines_with => \&generalize_infernal_types,
                 },
                 { analyses => 'microtom_flcdnas',
-                  gff3_output_spec_index => 0,
+                  gff3_output_spec_index => 1,
                   release_files => [qw| combi_genomic_gff3 cdna_algn_gff3 |],
                 },
                 { analyses => qr/^transcripts_/i,
