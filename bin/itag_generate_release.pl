@@ -349,7 +349,7 @@ sub dump_data {
                 },
                 { analyses => qr/^transcripts_/i,
                   gff3_output_spec_index => 0,
-                  filter_fh => \&transcript_aggregate_pipe,
+                  filter_fh => \&transcript_aggregating_pipe,
                   release_files => [qw| combi_genomic_gff3 cdna_algn_gff3 |],
                 },
                 { analyses => qr/^blastp_/i,
@@ -383,9 +383,9 @@ sub dump_data {
                 my @filehandles = @{$gen_fh}{flatten $dump->{release_files}};
 
                 my $subs  = $dump->{alter_lines_with};
-                $subs = [$subs] unless ref $subs eq 'ARRAY';
+                $subs = [$subs] if $subs && !( ref($subs) eq 'ARRAY' );
 
-                my $file = ($arecord->{obj}->files_for_seq($ctg->{batch},$ctg->{name}))[$index];
+                my $file = ( $arecord->{obj}->files_for_seq($ctg->{batch},$ctg->{name}) )[$index];
                 #print STDERR "dumping $arecord->{name}:$file to ".join(' ',flatten $dump->{release_files})."\n";
                 unless ( $dump->{errors_fatal} || -f $file ) {
                     report_file_not_available( $ctg, $arecord, $file );
@@ -422,7 +422,7 @@ sub validate_dumpspec {
   ref $d eq 'HASH' or die "dumpspec must be a hashref!\n";
 
   my @required_keys = qw| analyses gff3_output_spec_index release_files |;
-  my @optional_keys = qw| alter_lines_with errors_fatal |;
+  my @optional_keys = qw| alter_lines_with errors_fatal filter_fh |;
   my %valid_dump_keys = map {$_ => 1} @required_keys, @optional_keys;
 
   $valid_dump_keys{$_} or die "invalid key '$_' in dumpspec\ns"
@@ -1054,9 +1054,8 @@ sub copy_gff3_or_die {
   my ( $aname, $subs, $in_fh, @out_fhs ) = @_;
   $subs ||= [];
   #sub check { my $l = shift; return unless $l =~ /\S/; chomp $l;  my @f = split /\s+/,$l,9; @f == 9 or $l =~ /^#/ or confess "'$l' not valid gff3";};
-  while(<$in_fh>) {
+  while( my $result = <$in_fh> ) {
       #change the source column to be ITAG_ plus the analysis name
-      my $result = $_;
       $result = $_->($result) for @$subs;
       $result =~ s/^\s*(\S+)\t\S+/$1\tITAG_$aname/;
       $result .= "\n" unless $result =~ /\n$/;
