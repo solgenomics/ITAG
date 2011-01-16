@@ -35,6 +35,8 @@ itag_generate_release.pl - script to generate a genome annotation release for IT
 
     -R just collect stats and write a new README for the release
 
+    -f force overwrite of existing release dir, will overwrite all files
+
 =head1 MAINTAINER
 
 Robert Buels
@@ -89,7 +91,7 @@ use CXGN::Tools::Text qw/commify_number/;
 
 ### parse and validate command line args
 our %opt;
-getopts('d:p:b:PDSR',\%opt) or pod2usage(1);
+getopts('d:p:b:PDSRf',\%opt) or pod2usage(1);
 $opt{m} ||= 1_000_000;
 $opt{P} && $opt{D} and die "-P and -D are mutually exclusive\n";
 $opt{d} or pod2usage('must provide -d option');
@@ -213,7 +215,12 @@ sub dump_data {
             die if $CHILD_ERROR;
             system "mv $d $d.prev";
             die if $CHILD_ERROR;
-        } else {
+        }
+	elsif( $opt{f} ) {
+            system "rm -rf $d/*";
+            die if $CHILD_ERROR;
+	}
+	else {
             die "$d already exists.  I won't overwrite it!\n";
         }
     }
