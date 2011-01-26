@@ -2,6 +2,8 @@
 TAGS
 Build
 MYMETA.yml
-_build/*
+!exists
+!.exists
+_build
 *.sw?
 blib/*

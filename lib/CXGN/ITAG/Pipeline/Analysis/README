@@ -1,0 +1,7 @@
+To make a new analysis, run, for example,
+
+./new.sh my_new_an
+
+Which makes my_new_an.pm with module names and documentation filled in
+for you.
+

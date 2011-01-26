@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<GTH_output xmlns="http://www.genomethreader.org/GTH_output/" GTH_XML_version="1.1">
+  <header xmlns="http://www.genomethreader.org/GTH_output/header/">
+    <source program="GenomeThreader" version="0.9.54" build_date="2006-07-28 11:55:15" run_date="2009-08-04 17:43:08"/>
+    <gDNA_template_files>
+      <temp_name>/tmp/itag-analysis-sgn_markers-lA1GOz/C00.6_contig21/un_xed.seq</temp_name>
+    </gDNA_template_files>
+    <reference_files>
+      <file ref_name="/tmp/itag-analysis-sgn_markers-lA1GOz/sgn_markers.fasta" type="ESTcDNA"/>
+    </reference_files>
+    <splice_site_parameters parameter_type="Bayesian" species="arabidopsis"/>
+    <parameters>
+      <parameter name="bssmfile" value="arabidopsis"/>
+      <parameter name="scorematrixfile" value="BLOSUM62"/>
+      <parameter name="searchmode" value="forward=True,reverse=True)"/>
+      <parameter name="translationtable" value="1"/>
+      <parameter name="frompos" value="0"/>
+      <parameter name="topos" value="0"/>
+      <parameter name="width" value="0"/>
+      <parameter name="verbose" value="False"/>
+      <parameter name="skipalignmentout" value="False"/>
+      <parameter name="showintronmaxlen" value="120"/>
+      <parameter name="minorflen" value="64"/>
+      <parameter name="showseqnums" value="False"/>
+      <parameter name="gs2out" value="False"/>
+      <parameter name="maskpolyatails" value="False"/>
+      <parameter name="noautoindex" value="False"/>
+      <parameter name="minmatchlen" value="20"/>
+      <parameter name="seedlength" value="16"/>
+      <parameter name="exdrop" value="2"/>
+      <parameter name="online" value="False"/>
+      <parameter name="inverse" value="False"/>
+      <parameter name="exact" value="False"/>
+      <parameter name="chainwf" value="0.500000"/>
+      <parameter name="gcmaxgapwidth" value="1000000"/>
+      <parameter name="gcmincoverage" value="50"/>
+      <parameter name="introncutout" value="False"/>
+      <parameter name="autointroncutout" value="0"/>
+      <parameter name="icinitialdelta" value="50"/>
+      <parameter name="iciterations" value="2"/>
+      <parameter name="icdeltaincrease" value="50"/>
+      <parameter name="icminremintronlen" value="10"/>
+      <parameter name="nou12intronmodel" value="False"/>
+      <parameter name="u12donorprob" value="0.990000"/>
+      <parameter name="u12donorprob1mism" value="0.900000"/>
+      <parameter name="probies" value="0.500000"/>
+      <parameter name="probdelgen" value="0.030000"/>
+      <parameter name="identityweight" value="2.000000"/>
+      <parameter name="mismatchweight" value="-2.000000"/>
+      <parameter name="undetcharweight" value="0.000000"/>
+      <parameter name="deletionweight" value="-4.000000"/>
+      <parameter name="dpminexonlen" value="5"/>
+      <parameter name="dpminintronlen" value="50"/>
+      <parameter name="shortexonpenal" value="100"/>
+      <parameter name="shortintronpenal" value="100"/>
+      <parameter name="wzerotransition" value="80"/>
+      <parameter name="wdecreasedoutput" value="80"/>
+      <parameter name="leadcutoffsmode" value="RELAXED"/>
+      <parameter name="termcutoffsmode" value="STRICT"/>
+      <parameter name="cutoffsminexonlen" value="5"/>
+      <parameter name="scoreminexonlen" value="50"/>
+      <parameter name="minaveragessp" value="0.500000"/>
+      <parameter name="minalignmentscore" value="0.900000"/>
+      <parameter name="maxalignmentscore" value="1.000000"/>
+      <parameter name="mincoverage" value="0.900000"/>
+      <parameter name="maxcoverage" value="100.000000"/>
+      <parameter name="intermediate" value="False"/>
+      <parameter name="sortags" value="False"/>
+      <parameter name="sortagswf" value="1.000000"/>
+      <parameter name="first" value="0"/>
+      <parameter name="exondistri" value="False"/>
+      <parameter name="introndistri" value="False"/>
+      <parameter name="refseqcovdistri" value="False"/>
+    </parameters>
+    <overall_reference_type>ESTcDNA</overall_reference_type>
+  </header>
+  <alignment_module>
+  <spliced_alignment xmlns="http://www.genomethreader.org/GTH_output/alignment_module/spliced_alignment/">
+    <reference ref_file="/tmp/itag-analysis-sgn_markers-lA1GOz/sgn_markers.fasta" ref_id="C2_At4g00560" ref_strand="+" ref_description="C2_At4g00560">
+      <seq>ccatgcttcaacccaccccacgctgcagtccaaggaactgtgactctcttcagtaggcacagcaaactccttggccccataagaactgcattgcttttctaagatacgaattacgattgtagaaatcagtcgggaagctaagagatctcacagaaattgaaaatgagtagcaagaaaatattgatagttggtggcacaggttacttgggtcagcatcttctgcaagaattcacggcaatccaagatactcttccatatgctctctcattagcctttacctaccacaccaatccccctcctgagtgcctactgaaagccattcctcatgccctacccttccatgtagatttacgaaccagcaatggctttgatgacatctcacaaaattttgggcagcctgatgttgtggttaattgtgctgcactttctgttccacgtgcctgtgaagtggatgctactgctgccatggctattaatgtgccttctgctcttgttaagtggttgtcaagttttagcaatggcggtactcttctgattcacttgtctactgatcaagtttatgaagggaccaaatccttctacaaggaagatgatgagacccttcctgtgaatgtttatggaagatcaaaggtagcagcagagcaatttatatctgtaaattactcaaattttgcaattttgaggagcagtattatttatggacctcagactgtctcccctgtaccaaaatcacttccagttcagtggatggatagtgttcttgcaaagggagaagccatggatttttttcatgatgagttccgttgtcctgtctatgttaaggatcttgtgaccatcgtctggactctgacaagtagatggatctcagagaaggagccaatgcagttacttctgaacgtgggtggacctgatcgagtttccagggttcagatggctgaagctgttgcacatattcgaggttataatttgtcattgatcaaatcagtatcctcatcaactgttaaccgcggcgttaaatctccagcagatatatccatggatatcaccagattaattcagacactcgatatgtcaccaacttcatttagggatggtgttaaattgacacttgaagctgaatttgcttctgcatcatagtagtttttgtcttgctctttgccagaattctcatctttgtgtgtattcgttttgtcaaattatgttcatcttttcagaaatataatttgacttcacaatttgtcaaaagattttggatcttcgcactcaaaaaaaaaaaaaaaa</seq>
+    </reference>
+    <gDNA_segment>
+      <template temp_file="/tmp/itag-analysis-sgn_markers-lA1GOz/C00.6_contig21/un_xed.seq" temp_id="C00.6_contig21" temp_strand="+" temp_description="C00.6_contig21">
+        <position start="191" stop="20286"/>
+      </template>
+    </gDNA_segment>
+    <predicted_gene_structure xmlns="http://www.genomethreader.org/GTH_output/alignment_module/spliced_alignment/">
+      <exon-intron_info>
+        <exon e_serial="1">
+          <gDNA_exon_boundary g_start="488" g_stop="868" g_length="381"/>
+          <reference_exon_boundary r_type="cDNA" r_start="16" r_stop="396" r_length="381" r_score="0.950"/>
+        </exon>
+        <intron i_serial="1">
+          <gDNA_intron_boundary i_start="869" i_stop="1452" i_length="584">
+            <donor d_prob="0.996" d_score="0.98"/>
+            <acceptor a_prob="0.625" a_score="1.00"/>
+          </gDNA_intron_boundary>
+        </intron>
+        <exon e_serial="2">
+          <gDNA_exon_boundary g_start="1453" g_stop="1612" g_length="160"/>
+          <reference_exon_boundary r_type="cDNA" r_start="397" r_stop="556" r_length="160" r_score="0.994"/>
+        </exon>
+        <intron i_serial="2">
+          <gDNA_intron_boundary i_start="1613" i_stop="2897" i_length="1285">
+            <donor d_prob="0.677" d_score="1.00"/>
+            <acceptor a_prob="0.926" a_score="0.98"/>
+          </gDNA_intron_boundary>
+        </intron>
+        <exon e_serial="3">
+          <gDNA_exon_boundary g_start="2898" g_stop="3085" g_length="188"/>
+          <reference_exon_boundary r_type="cDNA" r_start="557" r_stop="744" r_length="188" r_score="0.984"/>
+        </exon>
+        <intron i_serial="3">
+          <gDNA_intron_boundary i_start="3086" i_stop="3661" i_length="576">
+            <donor d_prob="0.993" d_score="0.98"/>
+            <acceptor a_prob="0.000" a_score="0.98"/>
+          </gDNA_intron_boundary>
+        </intron>
+        <exon e_serial="4">
+          <gDNA_exon_boundary g_start="3662" g_stop="3785" g_length="124"/>
+          <reference_exon_boundary r_type="cDNA" r_start="745" r_stop="868" r_length="124" r_score="0.935"/>
+        </exon>
+        <intron i_serial="4">
+          <gDNA_intron_boundary i_start="3786" i_stop="4226" i_length="441">
+            <donor d_prob="0.909" d_score="0.88"/>
+            <acceptor a_prob="0.991" a_score="1.00"/>
+          </gDNA_intron_boundary>
+        </intron>
+        <exon e_serial="5">
+          <gDNA_exon_boundary g_start="4227" g_stop="4357" g_length="131"/>
+          <reference_exon_boundary r_type="cDNA" r_start="869" r_stop="999" r_length="131" r_score="1.000"/>
+        </exon>
+        <intron i_serial="5">
+          <gDNA_intron_boundary i_start="4358" i_stop="4569" i_length="212">
+            <donor d_prob="0.285" d_score="1.00"/>
+            <acceptor a_prob="0.998" a_score="0.94"/>
+          </gDNA_intron_boundary>
+        </intron>
+        <exon e_serial="6">
+          <gDNA_exon_boundary g_start="4570" g_stop="4837" g_length="268"/>
+          <reference_exon_boundary r_type="cDNA" r_start="1000" r_stop="1267" r_length="268" r_score="0.933"/>
+        </exon>
+        <intron i_serial="6">
+          <gDNA_intron_boundary i_start="4838" i_stop="5033" i_length="196">
+            <donor d_prob="0.000" d_score="0.92"/>
+            <acceptor a_prob="0.657" a_score="0.00"/>
+          </gDNA_intron_boundary>
+        </intron>
+        <exon e_serial="7">
+          <gDNA_exon_boundary g_start="5034" g_stop="5047" g_length="14"/>
+          <reference_exon_boundary r_type="cDNA" r_start="1268" r_stop="1281" r_length="14" r_score="0.643"/>
+        </exon>
+      </exon-intron_info>
+      <MATCH_line gen_id="C00.6_contig21" gen_strand="+" ref_id="C2_At4g00560" ref_strand="+">
+        <total_alignment_score>0.961</total_alignment_score>
+        <cumulative_length_of_scored_exons>1266</cumulative_length_of_scored_exons>
+        <coverage percentage="0.988" high_type="C"/>
+      </MATCH_line>
+      <PGS_line>
+        <gDNA gen_id="C00.6_contig21" gen_strand="+"/>
+        <rDNA rDNA_id="C2_At4g00560" rDNA_strand="+"/>
+        <gDNA_exon_coordinates>
+          <exon e_start="488" e_stop="868"/>
+          <exon e_start="1453" e_stop="1612"/>
+          <exon e_start="2898" e_stop="3085"/>
+          <exon e_start="3662" e_stop="3785"/>
+          <exon e_start="4227" e_stop="4357"/>
+          <exon e_start="4570" e_stop="4837"/>
+          <exon e_start="5034" e_stop="5047"/>
+        </gDNA_exon_coordinates>
+      </PGS_line>
+      <alignment>
+        <genome_strand>TGGCACGCTGCAGTCCAACGAACTGTGACTCTCATCAGTAGGCACAGCAAACTCCTTGGCCCCATAAAAACTGCATTGCTTTTCCAAGATACGAATTACGATTGTAGAAATCAGTGGAGAAGCTAAGAGATCTCACAGAAATTGAAAATGAGTAGCAAGAAGATATTGATAGTTGGTGGCACAGGTTACTTGGGTCAGCATCTTCTGCAGGAATTCACGGCAACCCAAAATACTCTTCCATATGCTCTCTCGTTAGCCTTTACCTACCACACCAATCCCCCACCTGAGCGCCTACTGGAAGCCATTCCTCATGCCCTACCCTTTCATGTAGATTTACGAACCGGCAATGGCTTTGATGACATCTCACAAAATTTTGGGCAGGTATGAATTTTACACTACAAAGTTACTAGAGATTCCATCTTTCTCTTTTAGGGTTTCAAGAATTGCAATTATTTTGCTTGCATTTTCAGTTTTGGTGATTGATAGCATCTTACGAATTGTTTGTCTAGTTTTTTGGGGTGGAAGTGTAAAACTTATGGTTCAAAGGTTCAACTAGTAATAGATTTTGAACACATAAATCCAATGGGTAATGGTAGAATTTTGATTTCGAACTCGAACTCATGAAGTTTACATTTTGAATTTCATGGTTTGCATTTTACTGTACACACTTACTAACGATTACGTTTTTCTTTTTCTCACTTGTATTTTGGTGATTGAGATTTGCATCTTCATATATATGTATATAAGATTTGAAGAAAGTTTTGGTATTTAATAAGAGAACTTATGTGTCGACTGATATCACTCAAGGCTGTGAATTTATTTAGGTGGTCTTTGCTGTCTGTTTGTTGTAATCTCGGATAAATACCTGAAGTGGCTGGTGGATTGTATAGTAGGTCAAATTTATTACTGAACCAGTTAAAATGACCATAATAGCTAATACCAAGTTTTGTAATGTGAATGAGCAGCCTGATGTTGTGGTTAATTGTGCTGCACTTTCTGTTCCACGTGCCTGTGAAGTGGATCCTACTGCTGCCATGGCTATTAATGTGCCTTCTGCTCTTGTTAAGTGGTTGTCAAGTTTTAGCAATGGCGGTACTCTTCTGATTCACTTGTCTACTGATCAAGGTAACACACGAGGAAATCATTGTAGTGACAACAGCTAATTTTTCACAAAAGTTAGAGAGTTTCTTGCTTCTGTATTGAGCTGGTTATGCTTCTTAGGCTAACTGTGTTGGTTTCTAATGTGGAGGAGAATGATAAAAGTCGACTTACTTTCATTGGTAGGGTTTGGTCATTGTTTCATTTATTTGGTACCGTTGGAAAAAAGTAGATGATGAAAATAGTAAAATGGACGTACTTCATTCCTCTGTAGGACTTCTGAGAGTGAAAAGTTGCATAGCTGATTACACAAGTCCTCAGCTATTGCCACACTCCACTTCTGCTTGGTTACCTGGCAGCCAATTCTTCCCTCATCTTACAACTCAGCTTCAATGTTGCTTTAGAGCCTTCGAATCCGTCTCCCCACTGATCTCCTTTTTCTTTTGTTAAAAAAAGGATCACCTATTTCATCAGATTTTAAAGTTTATCCACTCATTTAACTTTTGAGTTAGACGCAAAGATGCAATTTTTGGCATTTCTTAACAATTGATATAGCACTTTGCCAGTTTTATTTGTTATTTAGTTACACACTCTTCAAGATAATATAGCCAATGGGCAATGAGGTGCATGTCTTAGAGCTTTTGTGCCTGCCCGTAAGTGTCTCCTAAGCGAGATGTTGCGCCTAACCTGCCCTGCACCTAGATTCTTGGTGTAAGCGTACCTCAATTGAGTATTTAACAACACCACTGGCTATTAATATCATAGGAGCTAAACTCTATATACTTATTAACTCCTTGTGTTACCTCTGCAACTCTTGCCTAACAAACTAATTCTGGCACAAGGATGAACTGATCCTTCTAACACATGGGTAAACTTTTTAATGTTAAGGAAAATATCAGTAGGTTTATGGTATTTTATAACTCCTTCAGGTAGGTAAAGGTAAGATGCTTAAAATTTATAGCCACTTGGATAACGAAGATGCTGACTTGATATCTGGTGCATAAAATTTTGAGAAATAGGATGTTAGCTTATGTTCAGCAATTCCCCTGATATATTTGTTGGTGAATGCTTCATAATATTTATTGGCAGTATTCCTCTCCATGAAAGATTTGAAAAAGCTGTTTACAACCTTAGCATTTATAGATCAAGCAAGCTCTCTCACCTGTGATGTAATTTTATCAAATTGTTGAATGTTCTCATGTGGCTGTATGGACAACCATTTAATTATTGATTGTTCTCATGAGTCGTATATTTTGACTGATGCAAACAATTTTCTTGAGACTATGTGATGCTAATTAAACTTTTATCTCAGTTTACGAAGGGACCAAATCCTTCTACAAGGAAGATGATGAGACCCTTCCTGTGAATGTTTATGGAAGATCAAAGGTAGCAGCAGAGCAATTTATATCTGCAAATTACTCAAATTTTGCAATTTTGAGGAGCAGTATTATTTATGGACCTCAGACTGTCTCCCCTGTCCCAAAATCACTTCCAGTTCAGGTGAATACAATGAACTTCACCTTGTACTTGCACTTGTCCGACTTCATTAAAGGGCTGTTATTGTTCAGTAGAATGAGTGGGGGCAATAGTAGCCTCCGTGCCTTTTCTTTTGTGTGATTTGCAATTTAAACACGATATATCTTTTTTTTTGAAGCTTAACCTAATCACTTCATATTATGTCACGCTTTCCTGCTGTTTGGCCTGTATCTAGATTTAAACTTGATGTTGACTTTATTTTTTTTTAAAAAAAAAACAAAGTTGATATTGAGATGTATTCATGCTTGCAAATTATATTTAGCATTCTATATGCGATTACTATTGAATTCCATCTATTTATCCCCTTTTTTTGGACTCAATGGTCATACCATGGGGGTGAGTGGCTCTATTGAGCTTTATAATATAGTACTGTTGTTACATCCAATTGAGCATAAGATTGAATGTTACTCATGATTCTGTTATGATACAACAACAGAAAAAATTGTATCTAAATCCCAAGCAATTCTATTATGATATATGACACATTAAATCACTCGACTACTGGGCTTTGAGCTGATGTTTCACATGAAAATCATGCAGTGGATGGATAGTGTTCTTGCAAAGGGAGAAGCCATGGATTTTTTTCACGATGAATTCCGTTGTCCTGTCTATGTGAAGGATCTTGTGACCATCATATGGACCCTGACAAATAAATGGATCTCAGGTTTGACATGCTTTGACCCTCTAGACTGATTTGCCTTGATCACCCTCTGTCTGCATTATCAAATACGGGATACTTAACAACCGTCTGAAATTTCACTATGATCTTCTAGGATTGGTTCTTTCTTTGTGGTAGTTTTCCACATATTTAATACAACATTTCTTGCTGCGTGAGGATTTGATTCTTTTGAAGTATTATGATTGAGTTAACTGGAATATAATCCAAAAAACAAATAATTCAGCTCAATGTTCAATGTGGTGGTTCACTATGACTCGAGATAAGTTCTACAATGTGACTCTATCAATGCTCATGACCGGTTTATAGTTGAAGTTATGTCAGACTTTTTCCCTTTAAAGCCTCTAGTAAAGTTTCTGATACAATTTACCTGATTTTCTATCTCTCCTTGACTTTTCCGTTTTATCACATGATATGTGTTGTTTCTAGAGAAGGAGCCAATGCAGTTACTTCTGAACGTGGGTGGACCTGATCGAGTTTCCAGGGTTCAGATGGCTGAAGCTGTTGCACATATTCGAGGTTATAATTTGTCATTGATCAAATCAGTATCCTCATCAACTGTAAGTAACATTGGTTTAACATTACATTGACATTTGCATGCACGCGCACAAACAAATTTTCAAAAAAAGTCTCTTTACTTTTTTCATTTACCTTCTAGCTTCTGTTGTGTTACACTACAAGCACAACAAAGTCCAAGAAAGTATCATCACTACTGTTTTTTTCCTTAAAACCACATACCTAACCTATGTGTGTTATTATCTGAACATTATAGGTTAACCGCGGCGTTAAGTCTCCAGCAGATATATCCATGGATACCAACAGATTAATTCAGACACTCAATATGTCACCAACTTCATTTAGGAATGGTGTTAAGTTAACACTTGAAGCTGAATTTGCTTCTGCATCATAGTAGTTTTTGTCTTGCTCTTTTCCAGAATGCTCATCTTCATATGTATTCGTTTTGTCAAATTATGTTCATTTTTTCAAAAATATAATTTGACTTCAGAATTTATCAAAAGAATTTGGACCTTCGCACTCAAGGGCATGACCTAATGGTTTAGAATCATGATGTTTGCATTCAAATTTAAGTGGCCGAGTTACAAACTGGCTCAGACATCTTCTTTATCAAAAAATAAAATAAAGTTTAGCTTCAGACACAAATGTATCATAAAATGTCAAAGATTACAAAATCTATATTTAGTGATTTTAATGTCAGTAGAATCTTAATTTTCGTAGAAAGTTAAAACAAC</genome_strand>
+        <mrna_strand>CCCCACGCTGCAGTCCAAGGAACTGTGACTCTCTTCAGTAGGCACAGCAAACTCCTTGGCCCCATAAGAACTGCATTGCTTTTCTAAGATACGAATTACGATTGTAGAAATCAGTCGGGAAGCTAAGAGATCTCACAGAAATTGAAAATGAGTAGCAAGAAAATATTGATAGTTGGTGGCACAGGTTACTTGGGTCAGCATCTTCTGCAAGAATTCACGGCAATCCAAGATACTCTTCCATATGCTCTCTCATTAGCCTTTACCTACCACACCAATCCCCCTCCTGAGTGCCTACTGAAAGCCATTCCTCATGCCCTACCCTTCCATGTAGATTTACGAACCAGCAATGGCTTTGATGACATCTCACAAAATTTTGGGCAG........................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................CCTGATGTTGTGGTTAATTGTGCTGCACTTTCTGTTCCACGTGCCTGTGAAGTGGATGCTACTGCTGCCATGGCTATTAATGTGCCTTCTGCTCTTGTTAAGTGGTTGTCAAGTTTTAGCAATGGCGGTACTCTTCTGATTCACTTGTCTACTGATCAAG.....................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................TTTATGAAGGGACCAAATCCTTCTACAAGGAAGATGATGAGACCCTTCCTGTGAATGTTTATGGAAGATCAAAGGTAGCAGCAGAGCAATTTATATCTGTAAATTACTCAAATTTTGCAATTTTGAGGAGCAGTATTATTTATGGACCTCAGACTGTCTCCCCTGTACCAAAATCACTTCCAGTTCAG................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................TGGATGGATAGTGTTCTTGCAAAGGGAGAAGCCATGGATTTTTTTCATGATGAGTTCCGTTGTCCTGTCTATGTTAAGGATCTTGTGACCATCGTCTGGACTCTGACAAGTAGATGGATCTCAG.........................................................................................................................................................................................................................................................................................................................................................................................................................................................AGAAGGAGCCAATGCAGTTACTTCTGAACGTGGGTGGACCTGATCGAGTTTCCAGGGTTCAGATGGCTGAAGCTGTTGCACATATTCGAGGTTATAATTTGTCATTGATCAAATCAGTATCCTCATCAACT....................................................................................................................................................................................................................GTTAACCGCGGCGTTAAATCTCCAGCAGATATATCCATGGATATCACCAGATTAATTCAGACACTCGATATGTCACCAACTTCATTTAGGGATGGTGTTAAATTGACACTTGAAGCTGAATTTGCTTCTGCATCATAGTAGTTTTTGTCTTGCTCTTTGCCAGAATTCTCATCTTTGTGTGTATTCGTTTTGTCAAATTATGTTCATCTTTTCAGAAATATAATTTGACTTCACAATTTGTCAAAAGATTTTGGATCTTCGCACTCAA....................................................................................................................................................................................................AAAAAAAAAAAAAA</mrna_strand>
+      </alignment>
+    </predicted_gene_structure>
+  </spliced_alignment>
+    <total_number_ESTs_reported>1</total_number_ESTs_reported>
+    </alignment_module>
+  <PGL_module xmlns="http://www.genomethreader.org/GTH_output/PGL_module/">
+    <predicted_gene_location>
+      <PGL_line PGL_serial="1" PGL_strand="+" PGL_start="488" PGL_stop="5047"/>
+      <AGS_information>
+        <AGS_line AGS_serial="1">
+          <exon_coordinates>
+            <exon e_start="488" e_stop="868"/>
+            <exon e_start="1453" e_stop="1612"/>
+            <exon e_start="2898" e_stop="3085"/>
+            <exon e_start="3662" e_stop="3785"/>
+            <exon e_start="4227" e_stop="4357"/>
+            <exon e_start="4570" e_stop="4837"/>
+            <exon e_start="5034" e_stop="5047"/>
+          </exon_coordinates>
+        </AGS_line>
+        <SCR_line>
+          <exon-intron don_prob="0.996" acc_prob="0.625" e_score="0.950"/>
+          <exon-intron don_prob="0.677" acc_prob="0.926" e_score="0.994"/>
+          <exon-intron don_prob="0.993" acc_prob="0.000" e_score="0.984"/>
+          <exon-intron don_prob="0.909" acc_prob="0.991" e_score="0.935"/>
+          <exon-intron don_prob="0.285" acc_prob="0.998" e_score="1.000"/>
+          <exon-intron don_prob="0.000" acc_prob="0.657" e_score="0.933"/>
+          <exon-only e_score="0.643"/>
+        </SCR_line>
+        <exon-intron_info xmlns="http://www.genomethreader.org/GTH_output/PGL_module/predicted_gene_location/AGS_information/exon-intron_info/">
+          <exon e_serial="1" e_score="0.950">
+            <gDNA_exon_boundary e_start="488" e_stop="868" e_length="381"/>
+          </exon>
+          <intron i_serial="1" don_prob="0.996" acc_prob="0.625">
+            <gDNA_intron_boundary i_start="869" i_stop="1452" i_length="584"/>
+          </intron>
+          <exon e_serial="2" e_score="0.994">
+            <gDNA_exon_boundary e_start="1453" e_stop="1612" e_length="160"/>
+          </exon>
+          <intron i_serial="2" don_prob="0.677" acc_prob="0.926">
+            <gDNA_intron_boundary i_start="1613" i_stop="2897" i_length="1285"/>
+          </intron>
+          <exon e_serial="3" e_score="0.984">
+            <gDNA_exon_boundary e_start="2898" e_stop="3085" e_length="188"/>
+          </exon>
+          <intron i_serial="3" don_prob="0.993" acc_prob="0.000">
+            <gDNA_intron_boundary i_start="3086" i_stop="3661" i_length="576"/>
+          </intron>
+          <exon e_serial="4" e_score="0.935">
+            <gDNA_exon_boundary e_start="3662" e_stop="3785" e_length="124"/>
+          </exon>
+          <intron i_serial="4" don_prob="0.909" acc_prob="0.991">
+            <gDNA_intron_boundary i_start="3786" i_stop="4226" i_length="441"/>
+          </intron>
+          <exon e_serial="5" e_score="1.000">
+            <gDNA_exon_boundary e_start="4227" e_stop="4357" e_length="131"/>
+          </exon>
+          <intron i_serial="5" don_prob="0.285" acc_prob="0.998">
+            <gDNA_intron_boundary i_start="4358" i_stop="4569" i_length="212"/>
+          </intron>
+          <exon e_serial="6" e_score="0.933">
+            <gDNA_exon_boundary e_start="4570" e_stop="4837" e_length="268"/>
+          </exon>
+          <intron i_serial="6" don_prob="0.000" acc_prob="0.657">
+            <gDNA_intron_boundary i_start="4838" i_stop="5033" i_length="196"/>
+          </intron>
+          <exon e_serial="7" e_score="0.643">
+            <gDNA_exon_boundary e_start="5034" e_stop="5047" e_length="14"/>
+          </exon>
+        </exon-intron_info>
+        <supporting_evidence xmlns="http://www.genomethreader.org/GTH_output/PGL_module/predicted_gene_location/AGS_information/supporting_evidence/">
+          <PGS_line>
+            <gDNA_exon_coordinates>
+              <exon start="488" stop="868"/>
+              <exon start="1453" stop="1612"/>
+              <exon start="2898" stop="3085"/>
+              <exon start="3662" stop="3785"/>
+              <exon start="4227" stop="4357"/>
+              <exon start="4570" stop="4837"/>
+              <exon start="5034" stop="5047"/>
+            </gDNA_exon_coordinates>
+            <referenceDNA id="C2_At4g00560" strand="+"/>
+          </PGS_line>
+        </supporting_evidence>
+        <three_phase_translation xmlns="http://www.genomethreader.org/GTH_output/PGL_module/predicted_gene_location/AGS_information/three_phase_translation/">
+          <description PGL_serial="1" AGS_serial="1" gDNA_strand="+"/>
+          <translation>
+            <gDNA_template>TGGCACGCTGCAGTCCAACGAACTGTGACTCTCATCAGTAGGCACAGCAAACTCCTTGGCCCCATAAAAACTGCATTGCTTTTCCAAGATACGAATTACGATTGTAGAAATCAGTGGAGAAGCTAAGAGATCTCACAGAAATTGAAAATGAGTAGCAAGAAGATATTGATAGTTGGTGGCACAGGTTACTTGGGTCAGCATCTTCTGCAGGAATTCACGGCAACCCAAAATACTCTTCCATATGCTCTCTCGTTAGCCTTTACCTACCACACCAATCCCCCACCTGAGCGCCTACTGGAAGCCATTCCTCATGCCCTACCCTTTCATGTAGATTTACGAACCGGCAATGGCTTTGATGACATCTCACAAAATTTTGGGCAG : CCTGATGTTGTGGTTAATTGTGCTGCACTTTCTGTTCCACGTGCCTGTGAAGTGGATCCTACTGCTGCCATGGCTATTAATGTGCCTTCTGCTCTTGTTAAGTGGTTGTCAAGTTTTAGCAATGGCGGTACTCTTCTGATTCACTTGTCTACTGATCAAG : TTTACGAAGGGACCAAATCCTTCTACAAGGAAGATGATGAGACCCTTCCTGTGAATGTTTATGGAAGATCAAAGGTAGCAGCAGAGCAATTTATATCTGCAAATTACTCAAATTTTGCAATTTTGAGGAGCAGTATTATTTATGGACCTCAGACTGTCTCCCCTGTCCCAAAATCACTTCCAGTTCAG : TGGATGGATAGTGTTCTTGCAAAGGGAGAAGCCATGGATTTTTTTCACGATGAATTCCGTTGTCCTGTCTATGTGAAGGATCTTGTGACCATCATATGGACCCTGACAAATAAATGGATCTCAG : AGAAGGAGCCAATGCAGTTACTTCTGAACGTGGGTGGACCTGATCGAGTTTCCAGGGTTCAGATGGCTGAAGCTGTTGCACATATTCGAGGTTATAATTTGTCATTGATCAAATCAGTATCCTCATCAACT : GTTAACCGCGGCGTTAAGTCTCCAGCAGATATATCCATGGATACCAACAGATTAATTCAGACACTCAATATGTCACCAACTTCATTTAGGAATGGTGTTAAGTTAACACTTGAAGCTGAATTTGCTTCTGCATCATAGTAGTTTTTGTCTTGCTCTTTTCCAGAATGCTCATCTTCATATGTATTCGTTTTGTCAAATTATGTTCATTTTTTCAAAAATATAATTTGACTTCAGAATTTATCAAAAGAATTTGGACCTTCGCACTCAA : AAAGTTAAAACAAC</gDNA_template>
+            <first_frame> W  H  A  A  V  Q  R  T  V  T  L  I  S  R  H  S  K  L  L  G  P  I  K  T  A  L  L  F  Q  D  T  N  Y  D  C  R  N  Q  W  R  S  *  E  I  S  Q  K  L  K  M  S  S  K  K  I  L  I  V  G  G  T  G  Y  L  G  Q  H  L  L  Q  E  F  T  A  T  Q  N  T  L  P  Y  A  L  S  L  A  F  T  Y  H  T  N  P  P  P  E  R  L  L  E  A  I  P  H  A  L  P  F  H  V  D  L  R  T  G  N  G  F  D  D  I  S  Q  N  F  G  Q  :  P  D  V  V  V  N  C  A  A  L  S  V  P  R  A  C  E  V  D  P  T  A  A  M  A  I  N  V  P  S  A  L  V  K  W  L  S  S  F  S  N  G  G  T  L  L  I  H  L  S  T  D  Q   : V  Y  E  G  T  K  S  F  Y  K  E  D  D  E  T  L  P  V  N  V  Y  G  R  S  K  V  A  A  E  Q  F  I  S  A  N  Y  S  N  F  A  I  L  R  S  S  I  I  Y  G  P  Q  T  V  S  P  V  P  K  S  L  P  V  Q  :  W  M  D  S  V  L  A  K  G  E  A  M  D  F  F  H  D  E  F  R  C  P  V  Y  V  K  D  L  V  T  I  I  W  T  L  T  N  K  W  I  S   : E  K  E  P  M  Q  L  L  L  N  V  G  G  P  D  R  V  S  R  V  Q  M  A  E  A  V  A  H  I  R  G  Y  N  L  S  L  I  K  S  V  S  S  S  T  :  V  N  R  G  V  K  S  P  A  D  I  S  M  D  T  N  R  L  I  Q  T  L  N  M  S  P  T  S  F  R  N  G  V  K  L  T  L  E  A  E  F  A  S  A  S  *  *  F  L  S  C  S  F  P  E  C  S  S  S  Y  V  F  V  L  S  N  Y  V  H  F  F  K  N  I  I  *  L  Q  N  L  S  K  E  F  G  P  S  H  S   : K  S  *  N  N </first_frame>
+            <second_frame>  G  T  L  Q  S  N  E  L  *  L  S  S  V  G  T  A  N  S  L  A  P  *  K  L  H  C  F  S  K  I  R  I  T  I  V  E  I  S  G  E  A  K  R  S  H  R  N  *  K  *  V  A  R  R  Y  *  *  L  V  A  Q  V  T  W  V  S  I  F  C  R  N  S  R  Q  P  K  I  L  F  H  M  L  S  R  *  P  L  P  T  T  P  I  P  H  L  S  A  Y  W  K  P  F  L  M  P  Y  P  F  M  *  I  Y  E  P  A  M  A  L  M  T  S  H  K  I  L  G  S :   L  M  L  W  L  I  V  L  H  F  L  F  H  V  P  V  K  W  I  L  L  L  P  W  L  L  M  C  L  L  L  L  L  S  G  C  Q  V  L  A  M  A  V  L  F  *  F  T  C  L  L  I  K  :  F  T  K  G  P  N  P  S  T  R  K  M  M  R  P  F  L  *  M  F  M  E  D  Q  R  *  Q  Q  S  N  L  Y  L  Q  I  T  Q  I  L  Q  F  *  G  A  V  L  F  M  D  L  R  L  S  P  L  S  Q  N  H  F  Q  F  S :   G  W  I  V  F  L  Q  R  E  K  P  W  I  F  F  T  M  N  S  V  V  L  S  M  *  R  I  L  *  P  S  Y  G  P  *  Q  I  N  G  S  Q  :  R  R  S  Q  C  S  Y  F  *  T  W  V  D  L  I  E  F  P  G  F  R  W  L  K  L  L  H  I  F  E  V  I  I  C  H  *  S  N  Q  Y  P  H  Q  L :   L  T  A  A  L  S  L  Q  Q  I  Y  P  W  I  P  T  D  *  F  R  H  S  I  C  H  Q  L  H  L  G  M  V  L  S  *  H  L  K  L  N  L  L  L  H  H  S  S  F  C  L  A  L  F  Q  N  A  H  L  H  M  Y  S  F  C  Q  I  M  F  I  F  S  K  I  *  F  D  F  R  I  Y  Q  K  N  L  D  L  R  T  Q  :  K  V  K  T   </second_frame>
+            <third_frame>   A  R  C  S  P  T  N  C  D  S  H  Q  *  A  Q  Q  T  P  W  P  H  K  N  C  I  A  F  P  R  Y  E  L  R  L  *  K  S  V  E  K  L  R  D  L  T  E  I  E  N  E  *  Q  E  D  I  D  S  W  W  H  R  L  L  G  S  A  S  S  A  G  I  H  G  N  P  K  Y  S  S  I  C  S  L  V  S  L  Y  L  P  H  Q  S  P  T  *  A  P  T  G  S  H  S  S  C  P  T  L  S  C  R  F  T  N  R  Q  W  L  *  *  H  L  T  K  F  W  A   : A  *  C  C  G  *  L  C  C  T  F  C  S  T  C  L  *  S  G  S  Y  C  C  H  G  Y  *  C  A  F  C  S  C  *  V  V  V  K  F  *  Q  W  R  Y  S  S  D  S  L  V  Y  *  S  S :   L  R  R  D  Q  I  L  L  Q  G  R  *  *  D  P  S  C  E  C  L  W  K  I  K  G  S  S  R  A  I  Y  I  C  K  L  L  K  F  C  N  F  E  E  Q  Y  Y  L  W  T  S  D  C  L  P  C  P  K  I  T  S  S  S   : V  D  G  *  C  S  C  K  G  R  S  H  G  F  F  S  R  *  I  P  L  S  C  L  C  E  G  S  C  D  H  H  M  D  P  D  K  *  M  D  L  R :   E  G  A  N  A  V  T  S  E  R  G  W  T  *  S  S  F  Q  G  S  D  G  *  S  C  C  T  Y  S  R  L  *  F  V  I  D  Q  I  S  I  L  I  N   : C  *  P  R  R  *  V  S  S  R  Y  I  H  G  Y  Q  Q  I  N  S  D  T  Q  Y  V  T  N  F  I  *  E  W  C  *  V  N  T  *  S  *  I  C  F  C  I  I  V  V  F  V  L  L  F  S  R  M  L  I  F  I  C  I  R  F  V  K  L  C  S  F  F  Q  K  Y  N  L  T  S  E  F  I  K  R  I  W  T  F  A  L  K :   K  L  K  Q  </third_frame>
+          </translation>
+          <probable_ORFs xmlns="http://www.genomethreader.org/GTH_output/PGL_module/predicted_gene_location/AGS_information/three_phase_translation/probable_ORFs/">
+            <orf_entry>
+              <id_line>
+                <gDNA id="C00.6_contig21" strand="+"/>
+                <serials PGL_serial="1" AGS_serial="1" PPS_serial="1"/>
+                <orf_info>
+                  <exon_boundaries>
+                    <exon start="614" stop="868"/>
+                    <exon start="1453" stop="1612"/>
+                    <exon start="2898" stop="3085"/>
+                    <exon start="3662" stop="3785"/>
+                    <exon start="4227" stop="4357"/>
+                    <exon start="4570" stop="4707"/>
+                  </exon_boundaries>
+                  <frame>0</frame>
+                  <number_coding_nucleotides>993</number_coding_nucleotides>
+                  <number_encoded_amino_acids>331</number_encoded_amino_acids>
+                </orf_info>
+              </id_line>
+              <predicted_protein_sequence>EISQKLKMSSKKILIVGGTGYLGQHLLQEFTATQNTLPYALSLAFTYHTNPPPERLLEAIPHALPFHVDLRTGNGFDDISQNFGQPDVVVNCAALSVPRACEVDPTAAMAINVPSALVKWLSSFSNGGTLLIHLSTDQVYEGTKSFYKEDDETLPVNVYGRSKVAAEQFISANYSNFAILRSSIIYGPQTVSPVPKSLPVQWMDSVLAKGEAMDFFHDEFRCPVYVKDLVTIIWTLTNKWISEKEPMQLLLNVGGPDRVSRVQMAEAVAHIRGYNLSLIKSVSSSTVNRGVKSPADISMDTNRLIQTLNMSPTSFRNGVKLTLEAEFASAS*</predicted_protein_sequence>
+            </orf_entry>
+          </probable_ORFs>
+        </three_phase_translation>
+      </AGS_information>
+    </predicted_gene_location>
+  </PGL_module>
+</GTH_output>
+<!--
+$ general statistics:
+$ 12 chains have been computed
+$ 
+$ memory statistics:
+$ 31976 bytes spliced alignments in total
+$ 1 spliced alignments have been stored
+$ 31976 bytes was the average size of a spliced alignment
+$ 5720 bytes predicted gene locations in total
+$ 1 predicted gene locations have been stored
+$ 5720 bytes was the average size of a predicted gene location
+$ 1 megabytes was the average size of the backtrace matrix
+$ 12 backtrace matrices have been allocated
+$ 
+$ date finished: 2009-08-04 17:43:12
+-->
