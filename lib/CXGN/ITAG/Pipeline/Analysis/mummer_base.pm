@@ -11,6 +11,7 @@ use Bio::SeqIO;
 use File::NFSLock;
 use Fcntl qw( LOCK_EX LOCK_NB );
 use List::Util qw/shuffle/;
+use Scalar::Util qw/ blessed /;
 
 use CXGN::Tools::Run;
 use CXGN::Tools::List 'balanced_split_sizes';
@@ -140,8 +141,21 @@ sub launch_jobs {
             $seqname,
             $job_seq_file,
             $reference_seq_file,
-            $outfile,
-            $gff3_out_file,
+            {
+                on_completion => sub {
+                    my $job = shift;
+
+                    #concatenate the output files
+                    my $job_out = file( $job->out_file )->openr;
+                    my $out_fh  = file( $outfile )->open('>>');
+                    $out_fh->print( $_ ) while <$job_out>;
+
+                    #convert the mummer results to gff3
+                    my $mummer_results = $self->_parse_mummer( $job->out_file );
+                    my $gff_fh = file( $gff3_out_file )->open('>>');
+                    $self->_mummer_to_gff3( $mummer_results, $gff_fh );
+                },
+            },
            )
     } @$query_files;
 }
@@ -156,7 +170,7 @@ sub _seq_count {
 }
 
 sub run_mummer {
-    my ( $class, $seqname, $genome_fasta_file, $seq_file, $outfile, $gff3_outfile ) = @_;
+    my ( $class, $seqname, $genome_fasta_file, $seq_file ) = @_;
 
     my ($mummer_param_singles, $mummer_param_values) = $class->mummer_params;
 
@@ -173,25 +187,6 @@ sub run_mummer {
         { die_on_destroy => 1,
           working_dir => File::Spec->tmpdir,
 	  vmem => '1500mb',
-          on_completion => sub {
-              my $job = shift;
-              my $mummer_results = $class->_parse_mummer( $job->out_file );
-
-              # print our outfile
-              {
-                  my $outfile_lock = File::NFSLock->new( $job->out_file, LOCK_EX|LOCK_NB );
-                  my $job_out = file( $job->out_file )->openr;
-                  my $out_fh  = file( $outfile )->open('>>');
-                  $out_fh->print( $_ ) while <$job_out>;
-              }
-
-              #convert the mummer results to gff3
-              {
-                  my $gff3_lock = File::NFSLock->new( "$gff3_outfile", LOCK_EX|LOCK_NB );
-                  my $gff_fh = file($gff3_outfile)->open('>>');
-                  $class->_mummer_to_gff3( $mummer_results, $gff_fh );
-              }
-          },
         },
        )
       or die "failed to run mummer on fasta files '$genome_fasta_file' versus '$seq_file'";
@@ -205,6 +200,7 @@ sub _mummer_to_gff3 {
 
     # print gff version and sequence-region pragmas if this is the
     # first gff3 in the file
+    #unless( blessed($gff_fh) && $gff_fh->can('tell') && $gff_fh->tell ) {
     unless( $gff_fh->tell ) {
         $gff_fh->print(<<'');
 ##gff-version 3

@@ -143,29 +143,29 @@ SL2.30ch00	ITAG_genome	match	21780867	21782005	.	-	.	Name=C03SLm0006J07.1;Target
 SL2.30ch00	ITAG_genome	match	21773029	21779988	.	-	.	Name=C03SLm0006J07.1;Target=C03SLm0006J07.1 11614703 11621662 +
 
 
-    my $temp_out  = File::Temp->new;
-    my $temp_gff3 = File::Temp->new;
-
     my $random_dna = random_dna(5000);
     my $genome_fasta = tempfile_containing( ">FooGenome\n$random_dna\n" );
 
     my $seq_file = tempfile_containing( ">BarSequence\n".substr( $random_dna, 123, 4222 )."\n" );
 
     SKIP : {
-    eval {
-        mummer_base->run_mummer( 'BarSequence', $genome_fasta, $seq_file, $temp_out, $temp_gff3 );
-    };
-    skip "mummer not present", 2 if $@;
+        eval {
+            mummer_base->run_mummer( 'BarSequence', $genome_fasta, $seq_file );
+        };
+        skip "mummer not present", 2 if $@;
 
-    mummer_base->run_mummer( 'BarSequence', $genome_fasta, $seq_file, $temp_out, $temp_gff3 );
-    is( file($temp_out)->slurp, <<'', 'right mummer out' );
+        my $job = mummer_base->run_mummer( 'BarSequence', $genome_fasta, $seq_file );
+        is( $job->out, <<'', 'right mummer out' );
 > BarSequence  Len = 4222
   FooGenome       124         1      4222
 > BarSequence Reverse  Len = 4222
 
+        my $gff3;
+        mummer_base->_mummer_to_gff3( mummer_base->_parse_mummer( $job->out_file ), IO::Scalar->new( \$gff3 ) );
 
-    is( file($temp_gff3)->slurp, <<'', 'right mummer gff3' );
-##gff3-version 3
+
+        is( $gff3, <<'', 'right mummer gff3' );
+##gff-version 3
 ##sequence-region BarSequence 1 4222
 BarSequence	ITAG_genome	match	124	4345	.	+	.	Name=FooGenome;Target=FooGenome 1 4222 +
 
