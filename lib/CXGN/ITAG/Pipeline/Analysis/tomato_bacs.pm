@@ -93,7 +93,12 @@ sub _load_aliases {
 sub _get_aliases {
     my ( $class, $bacname ) = @_;
     $class->_load_aliases unless %aliases;
-    return $aliases{$bacname} || [];
+    return $aliases{$bacname} if $aliases{$bacname};
+    if( $bacname =~ s/(\.\d+)+$// ) {
+        return [ $bacname ];
+    } else {
+        return [];
+    }
 }
 sub _all_aliases {
     shift->_load_aliases unless %aliases;
