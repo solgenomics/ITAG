@@ -251,7 +251,7 @@ sub _mummer_to_gff3 {
         $gff_fh->print( join( "\t",
                               @fields,
                               join( ';',
-                                    map { "$_=$attrs{$_}" }
+                                    map { "$_=".uri_escape($attrs{$_}, ';=%&,') }
                                     sort keys %attrs
                                    )
                              ),
