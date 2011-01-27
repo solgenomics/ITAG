@@ -191,6 +191,7 @@ sub run_mummer {
        )
       or die "failed to run mummer on fasta files '$genome_fasta_file' versus '$seq_file'";
 
+    print $mummer_job->out;
 }
 
 sub _mummer_to_gff3 {
