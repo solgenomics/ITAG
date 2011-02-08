@@ -4,14 +4,14 @@ use warnings;
 
 use autodie ':all';
 
-use Path::Class;
 
 use Bio::SeqIO;
 
-use File::NFSLock;
-use Fcntl qw( LOCK_EX LOCK_NB );
 use List::Util qw/shuffle/;
 use Scalar::Util qw/ blessed /;
+
+use Path::Class;
+use URI::Escape;
 
 use CXGN::Tools::Run;
 use CXGN::Tools::List 'balanced_split_sizes';

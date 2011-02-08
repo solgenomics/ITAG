@@ -8,7 +8,6 @@ use English qw/ -no_match_vars /;
 
 use Data::Dumper;
 use File::Basename;
-use File::NFSLock;
 
 use Storable qw/ nstore retrieve /;
 
