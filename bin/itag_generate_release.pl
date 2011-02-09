@@ -319,7 +319,7 @@ sub dump_data {
                   gff3_output_spec_index => 1,
                   release_files => [qw| combi_genomic_gff3 genefinders_gff3 |],
                 },
-                { analyses => [qw[ tobacco_contigs potato_bacs ]],
+                { analyses => [qw[ tobacco_contigs potato_bacs itag1_ref ]],
                   gff3_output_spec_index => 1,
                   release_files => [qw| combi_genomic_gff3 other_genomes_gff3 |],
                 },
