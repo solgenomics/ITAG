@@ -74,6 +74,7 @@ use List::Util qw/ min max /;
 use Statistics::Descriptive;
 use Tie::Function;
 use Template;
+use Try::Tiny;
 use URI::Escape;
 
 use Data::Dumper;
@@ -398,7 +399,14 @@ sub dump_data {
                         $in_fh = $_->( $in_fh ) for @$filters;
                     }
 
-                    copy_gff3_or_die( $arecord->{name}, $subs, $in_fh, @filehandles);
+                    try {
+                        copy_gff3_or_die( $arecord->{name}, $subs, $in_fh, @filehandles);
+                    } catch {
+                        use Data::Dump;
+                        warn Data::Dump::dump( $subs );
+                        warn Data::Dump::dump( $dump );
+                        die $_;
+                    };
                 }
             }
         }
