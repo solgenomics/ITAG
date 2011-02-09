@@ -42,7 +42,7 @@ sub mummer_params {
         [ qw( -mum -b -n -L ) ],
 
         {
-            -l => 1000,
+            -l => 5000,
         }
        );
 }

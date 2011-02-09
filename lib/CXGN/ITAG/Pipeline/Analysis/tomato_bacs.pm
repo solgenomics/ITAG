@@ -10,17 +10,6 @@ use List::MoreUtils 'uniq';
 
 use CXGN::Tools::Wget qw/ wget_filter /;
 
-sub mummer_params {
-
-    return (
-        [ qw( -mum -b -n -L ) ],
-
-        {
-            -l => 20_000,
-        }
-       );
-}
-
 sub gff3_source {
     'ITAG_tomato_bacs'
 }
