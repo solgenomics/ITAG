@@ -32,7 +32,7 @@ sub munge_gff3 {
 
     if( my @aliases = @{ $class->_get_aliases( $name ) } ) {
         $attrs->{Name} = shift @aliases;
-        $attrs->{Alias} = join ',', @aliases if @aliases;
+        $attrs->{Alias} = \@aliases if @aliases;
         if( my $d = $class->_get_defline( $name ) ) {
             $attrs->{Note} ||= $d;
         }

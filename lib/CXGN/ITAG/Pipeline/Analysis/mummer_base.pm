@@ -249,15 +249,20 @@ sub _mummer_to_gff3 {
 
         $class->munge_gff3( {}, \@fields, \%attrs );
 
-        $gff_fh->print( join( "\t",
-                              @fields,
-                              join( ';',
-                                    map { "$_=".uri_escape($attrs{$_}, ';=%&,') }
-                                    sort keys %attrs
-                                   )
-                             ),
-                        "\n",
-                       );
+        $gff_fh->print(
+          join( "\t",
+                @fields,
+                join( ';',
+                      map {
+                        my $key = $_;
+                        my $val = $attrs{$_};
+                        $val = [$val] unless ref $val;
+                        "$key=".join(',', map uri_escape($_,';=%&,'), @$val )
+                      } sort keys %attrs
+                   )
+             ),
+          "\n",
+       );
     }
 
     return;
