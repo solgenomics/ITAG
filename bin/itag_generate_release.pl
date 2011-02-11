@@ -295,6 +295,7 @@ sub dump_data {
                       my $line = shift;
                       $line = add_name_attr( $line );
                       $line = add_functional_annotations( $line, $go_terms, $human_readable_descriptions );
+                      $line =~ s/\tITAG_renaming\t/\tITAG_eugene\t/; #< change the source back to the original
                       return $line;
                   },
                   errors_fatal => 1,
@@ -342,7 +343,12 @@ sub dump_data {
                 { analyses => 'renaming',
                   gff3_output_spec_index => 4,
                   release_files => ['combi_genomic_gff3'],
-                  alter_lines_with => \&generalize_infernal_types,
+                  alter_lines_with => sub {
+                    my ($line) = @_;
+                    $line = generalize_infernal_types( $line );
+                    $line =~ s/\tITAG_renaming\t/\tITAG_infernal\t/; #< change the source back to the original
+                    return $line;
+                  },
                 },
                 { analyses => 'microtom_flcdnas',
                   gff3_output_spec_index => 1,
@@ -1064,8 +1070,8 @@ sub copy_gff3_or_die {
   #sub check { my $l = shift; return unless $l =~ /\S/; chomp $l;  my @f = split /\s+/,$l,9; @f == 9 or $l =~ /^#/ or confess "'$l' not valid gff3";};
   while( my $result = <$in_fh> ) {
       #change the source column to be ITAG_ plus the analysis name
-      $result = $_->($result) for @$subs;
       $result =~ s/^\s*(\S+)\t\S+/$1\tITAG_$aname/;
+      $result = $_->($result) for @$subs;
       $result .= "\n" unless $result =~ /\n$/;
       #check($result);
       for my $fh (@out_fhs) {
