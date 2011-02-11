@@ -295,7 +295,7 @@ sub _parse_mummer {
             $reverse = $reverse ? 1 : 0;
         } else {
             $line =~ s/^\s+|\s+$//g;
-            my ($subject, $query_start, $subject_start, $length) = split /\s+/, $line;
+            my ($subject, $subject_start, $query_start, $length) = split /\s+/, $line;
 
             push @return, {
                 query          => $query,
