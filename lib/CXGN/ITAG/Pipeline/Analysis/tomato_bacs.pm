@@ -29,10 +29,10 @@ sub run_mummer {
 sub munge_gff3 {
     my ( $class, $args, $gff3, $attrs ) = @_;
     my $name = $attrs->{Name};
-    my $aliases = $class->_get_aliases( $name );
-    if( @$aliases ) {
-        $attrs->{Name} = shift @$aliases;
-        $attrs->{Alias} = join ',', @$aliases if @$aliases;
+
+    if( my @aliases = @{ $class->_get_aliases( $name ) } ) {
+        $attrs->{Name} = shift @aliases;
+        $attrs->{Alias} = join ',', @aliases if @aliases;
         if( my $d = $class->_get_defline( $name ) ) {
             $attrs->{Note} ||= $d;
         }
