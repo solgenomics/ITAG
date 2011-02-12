@@ -137,7 +137,6 @@ has $_ => (
 has 'release' => (
     is => 'ro',
     isa => 'CXGN::ITAG::Release',
-    required => 1,
    );
 
 has 'genomic_gff3' => (
@@ -241,7 +240,7 @@ sub _analyze_genomic_gff3 { # process the genomic gff3
 
         ### src: $src
         ### type: $type
-        if ( $src eq 'itag_renaming' ) {
+        if ( $src eq 'itag_renaming' || $src eq 'itag_eugene' ) {
             if ( $type eq 'exon' ) {
                 $self->add_exon_length( $length );
                 if ( my $p = $previous_exon_end->{$strand} ) {
