@@ -1182,7 +1182,7 @@ sub _aggregate_transcript_gff3 {
     my %seen;
     my %lines;
     while ( <$in_fh> ) {
-        unless( /^(\S+)\tITAG_transcripts_\S+.+Target=(\S+)/ ) {
+        unless( /^(\S+)\t.+Target=(\S+)/ ) {
             next;
         }
         next if $seen{$_}++;
