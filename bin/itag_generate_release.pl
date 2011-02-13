@@ -345,8 +345,9 @@ sub dump_data {
                   release_files => ['combi_genomic_gff3'],
                   alter_lines_with => sub {
                     my ($line) = @_;
+                    # change the source back to the original
+                    $line =~ s/\tITAG_renaming\t/\tITAG_infernal\t/;
                     $line = generalize_infernal_types( $line );
-                    $line =~ s/\tITAG_renaming\t/\tITAG_infernal\t/; #< change the source back to the original
                     return $line;
                   },
                 },
@@ -1142,7 +1143,7 @@ sub generalize_infernal_types {
     my ($line) = @_;
     # for easier config and loading, change the type of infernal lines
     # to 'transcript' and put the real type in rna_type
-    if( $line =~ s/INFERNAL \t ([^\t]+) \t /infernal\ttranscript\t/xi ) {
+    if( $line =~ s/ (?<= INFERNAL \t ) ([^\t]+) (?= \t )/transcript/xi ) {
 	my $type = $1;
         $line =~ s/[;\s]+$//;
         $line .= ";rna_type=$type\n";
