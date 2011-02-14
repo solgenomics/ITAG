@@ -53,7 +53,7 @@ sub get_all_files {
   $self->{files} ||=
     {
      genomic_fasta        => { file => $self->_assemble_release_filename("genomic","fasta"),
-			       desc => 'fasta-format sequence file of genomic contig sequences.',
+			       desc => 'fasta-format sequence file of genomic sequences.',
 			       type => 'fasta',
 			       seq_type => 'genomic',
 			     },
