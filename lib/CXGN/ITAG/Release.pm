@@ -6,7 +6,9 @@ use Carp;
 use File::Spec;
 use File::Basename;
 
-use CXGN::DB::GFF::Versioned;
+use Config::INI::Reader;
+use Config::INI::Writer;
+
 use CXGN::Tools::Run;
 use CXGN::ITAG::Config;
 use CXGN::ITAG::Tools qw/ parse_release_dirname /;
@@ -61,8 +63,7 @@ none
          dir => force directory to use for this release (defaults to <releaseses_root_dir>/<release_name>),
          basename => force dir basename to use (defaults to <release_name>)
   Ret : a new CXGN::ITAG::Release object you can use to work with a
-        release directory.  Depending on the params, this will return
-        objects in CXGN::ITAG::Release::Series*
+        release directory.
   Side Effects: none
 
 =cut
@@ -83,25 +84,10 @@ sub new {
   #normalize boolean args
   $args{$_} = !!$args{$_} foreach qw/devel pre/;
 
-  # if we're doing a new() through this, the base class, figure out
-  # what subclass of release object to return
-  if( $class eq __PACKAGE__ ) {
-      $class = $class->_resolve_release_class( \%args );
-      eval "require $class"; die $@ if $@;
-  }
-
   return bless \%args, $class;
 }
 
-sub _resolve_release_class {
-    my ( $class, $args ) = @_;
 
-    if( ! $args->{releasenum} || $args->{releasenum} <= 1 ) {
-        return 'CXGN::ITAG::Release::Series1';
-    } else {
-        return 'CXGN::ITAG::Release::Series2';
-    }
-}
 
 =head2 find
 
@@ -208,10 +194,127 @@ sub get_file_info {
 }
 
 
+=head2 get_all_files
+
+  Usage: my $all = $rel->get_all_files
+  Desc : get hashref of info for all files
+  Args : none
+  Ret  : hashref as
+         {  shortname => file info hashref,
+            ...
+         }
+  Side Effects: none
+
+=head3 File Shortnames
+
+  genomic_fasta
+  cdna_fasta
+  cds_fasta
+  protein_fasta
+  contig_gff3
+  models_gff3
+  genefinders_gff3
+  functional_prot_gff3
+  cdna_algn_gff3
+  combi_genomic_gff3
+  contig_members_sol
+  sol_gb_mapping
+  readme
+  ...
+
+=cut
+
 sub get_all_files {
-    die 'get_all_files is abstract';
+    my ( $self ) = @_;
+
+    -f $self->_metadata_filename
+         or croak "release ".$self->release_tag." has no metadata file ".$self->_metadata_filename;
+
+    my $data = Config::INI::Reader->read_file( $self->_metadata_filename );
+    for ( values %$data ) {
+        $_->{file} = $self->_assemble_release_filename( $_->{file}, $_->{ext} || $_->{type} );
+    }
+
+    return $data;
 }
 
+sub _metadata_filename {
+    shift->_assemble_release_filename( 'metadata', 'ini' );
+}
+
+sub _write_default_metadata_file {
+    my ( $self ) = @_;
+    my $data =
+    {
+     genomic_fasta        => { file => 'genomic',
+			       desc => 'fasta-format sequence file of genomic pseudomolecule sequences.',
+			       type => 'fasta',
+			       seq_type => 'genomic',
+			     },
+     cdna_fasta           => { file => "cdna",
+			       desc => 'fasta-format sequence file of cDNA sequences.',
+			       type => 'fasta',
+			       seq_type => 'cdna',
+			     },
+     cds_fasta            => { file => "cds",
+			       desc => 'fasta-format sequence file of CDS sequences.',
+			       type => 'fasta',
+			       seq_type => 'cds',
+			     },
+     protein_fasta        => { file => "proteins",
+			       desc => 'fasta-format sequence file of protein sequences.',
+			       type => 'fasta',
+			       seq_type => 'protein',
+			     },
+     models_gff3          => { file => "gene_models",
+			       desc => 'GFF version 3 file containing gene models in this release.',
+			       type => 'gff3',
+			       seq_type => 'genomic',
+			     },
+     genefinders_gff3     => { file => "de_novo_gene_finders",
+			       desc => 'GFF version 3 file containing predictions from several de novo gene finders.  These are intermediate data, used by EuGene to decide the final consensus gene models.',
+			       type => 'gff3',
+			       seq_type => 'genomic',
+			     },
+     sgn_data_gff3        => { file => "sgn_data",
+			       desc => 'GFF version 3 file containing alignments to sequences related to data on SGN.  Currently contains alignments to SGN unigenes, SGN marker sequences, and SGN locus sequences.',
+			       type => 'gff3',
+			       seq_type => 'genomic',
+			     },
+     genomic_reagents_gff3=> { file => "genomic_reagents",
+			       desc => 'GFF version 3 file containing alignments to other genomic sequences from tomato: genomic clones, other genome builds, etc.',
+			       type => 'gff3',
+			       seq_type => 'genomic',
+			     },
+     other_genomes_gff3   => { file => "other_genomes",
+			       desc => 'GFF version 3 file containing alignments to genomic sequences from other organisms.',
+			       type => 'gff3',
+			       seq_type => 'genomic',
+			     },
+     functional_prot_gff3 => { file => "protein_functional",
+			       desc => 'GFF version 3 file containing functional annotations to protein sequences.',
+			       type => 'gff3',
+			       seq_type => 'protein',
+			     },
+     cdna_algn_gff3      =>  { file => "cdna_alignments",
+			       desc => 'GFF version 3 file containing alignments of existing EST and cDNA sequences to the genome.',
+			       type => 'gff3',
+			       seq_type => 'genomic',
+			     },
+     combi_genomic_gff3   => { file => "genomic_all",
+			       desc => 'GFF version 3 file containing all genomic annotations in this release.',
+			       type => 'gff3',
+			       seq_type => 'genomic',
+			     },
+     readme               => { file => "README",
+			       desc => 'Overview of the release, with some statistics.',
+			       type => 'txt',
+			       seq_type => '',
+			     },
+    };
+
+    return Config::INI::Writer->write_file( $data, $self->_metadata_filename );
+}
 
 sub _assemble_release_filename {
   my ($self,$name,$type) = @_;
@@ -299,7 +402,8 @@ sub dir_basename {
 =head2 mkdir
 
   Usage: $rel->mkdir() or die "could not create release directory!";
-  Desc : attempt to make the directory returned by dir()
+  Desc : attempt to make the directory returned by dir().  Also writes
+         a default metadata file if one does not already exist.
   Args : none
   Ret  : true  if the creation was successful or the dir already existed,
          false if the creation was not successful, or the dir exists
@@ -312,13 +416,13 @@ sub mkdir {
   my ($self) = @_;
 
   my $d = $self->dir;
+  my $got_dir = -d $d && -w $d || CORE::mkdir($d);
 
-  if( -d $d ) {
-    return -w $d;
+  if( $got_dir && ! -f $self->_metadata_filename ) {
+      $self->_write_default_metadata_file;
   }
 
-
-  return CORE::mkdir($d);
+  return $got_dir;
 }
 
 

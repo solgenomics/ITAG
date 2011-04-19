@@ -6,6 +6,7 @@ use English;
 use Test::More;
 
 use File::Temp qw/tempdir/;
+use Path::Class;
 
 BEGIN {
   use_ok(  'CXGN::ITAG::Release'  )
@@ -18,6 +19,14 @@ mkdir "$tempdir/ITAG1_release";
 mkdir "$tempdir/ITAG1_pre_release";
 mkdir "$tempdir/ITAG_devel_release";
 symlink './ITAG_devel_release', "$tempdir/ITAG_current";
+file( "$tempdir/ITAG1_${_}release/ITAG1_${_}metadata.ini" )->openw->print(<<EOM) for '', 'pre_';
+
+[combi_genomic_gff3]
+file = genomic_all
+type = gff3
+desc = GFF version 3 file containing all genomic annotations in this release.
+
+EOM
 
 #system 'ls', '-l', $tempdir;
 
