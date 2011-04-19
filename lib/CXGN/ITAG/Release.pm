@@ -227,8 +227,10 @@ sub get_file_info {
 sub get_all_files {
     my ( $self ) = @_;
 
-    -f $self->_metadata_filename
-         or croak "release ".$self->release_tag." has no metadata file ".$self->_metadata_filename;
+    unless( -f $self->_metadata_filename ) {
+        carp "release ".$self->release_tag." has no metadata file ".$self->_metadata_filename;
+        return {};
+    }
 
     my $data = Config::INI::Reader->read_file( $self->_metadata_filename );
     for ( values %$data ) {
