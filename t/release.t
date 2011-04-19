@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use English;
 
-use Test::More tests => 31;
+use Test::More;
 
 use File::Temp qw/tempdir/;
 
@@ -59,17 +59,38 @@ cmp_ok($rels[0]->dir_modtime,'<=',time(),'reasonable dir_modtime');
 like($rels[2]->text_description,qr/development/,'text_description for development release');
 unlike($rels[1]->text_description,qr/development/,'text_description for non-development release');
 
+{
 # now let's make a new release and test it out
-my $newrel = CXGN::ITAG::Release->new( releasenum => 2);
-is($newrel->dir(),"$tempdir/ITAG2_release",'got correct dirname for new release');
-ok(! -d $newrel->dir(), 'and dir does not exist yet');
-ok($newrel->mkdir(), 'mkdir returned true');
-ok( -w $newrel->dir(), 'and now the dir exists and is writable');
-is( $newrel->release_tag, 'ITAG2', 'correct release tag');
-is( $newrel->get_file_info('cdna_fasta')->{file},"$tempdir/ITAG2_release/ITAG2_cdna.fasta", 'got correct cDNA fasta file name');
+    my $newrel = CXGN::ITAG::Release->new( releasenum => 2);
+    is($newrel->dir(),"$tempdir/ITAG2_release",'got correct dirname for new release');
+    ok(! -d $newrel->dir(), 'and dir does not exist yet');
+    ok($newrel->mkdir(), 'mkdir returned true');
+    ok( -w $newrel->dir(), 'and now the dir exists and is writable');
+    is( $newrel->release_tag, 'ITAG2', 'correct release tag');
+    is( $newrel->get_file_info('cdna_fasta')->{file},"$tempdir/ITAG2_release/ITAG2_cdna.fasta", 'got correct cDNA fasta file name');
 
-# test tarfile handling
-is( $newrel->tarfile_name, "$tempdir/ITAG2_release.tar.gz", 'got correct tarfile name');
-ok( ! -f $newrel->tarfile_name, 'tarfile does not exist yet');
-ok( $newrel->make_tarfile, 'make_tarfile returns true');
-ok( -f $newrel->tarfile_name, 'and now tarfile exists');
+    # test tarfile handling
+    is( $newrel->tarfile_name, "$tempdir/ITAG2_release.tar.gz", 'got correct tarfile name');
+    ok( ! -f $newrel->tarfile_name, 'tarfile does not exist yet');
+    ok( $newrel->make_tarfile, 'make_tarfile returns true');
+    ok( -f $newrel->tarfile_name, 'and now tarfile exists');
+}
+
+{
+    # now let's make a new release and test it out
+    my $newrel = CXGN::ITAG::Release->new( releasenum => 2.3);
+    is($newrel->dir(),"$tempdir/ITAG2.3_release",'got correct dirname for new release');
+    ok(! -d $newrel->dir(), 'and dir does not exist yet');
+    ok($newrel->mkdir(), 'mkdir returned true');
+    ok( -w $newrel->dir(), 'and now the dir exists and is writable');
+    is( $newrel->release_tag, 'ITAG2.3', 'correct release tag');
+    is( $newrel->get_file_info('cdna_fasta')->{file},"$tempdir/ITAG2.3_release/ITAG2.3_cdna.fasta", 'got correct cDNA fasta file name');
+
+    # test tarfile handling
+    is( $newrel->tarfile_name, "$tempdir/ITAG2.3_release.tar.gz", 'got correct tarfile name');
+    ok( ! -f $newrel->tarfile_name, 'tarfile does not exist yet');
+    ok( $newrel->make_tarfile, 'make_tarfile returns true');
+    ok( -f $newrel->tarfile_name, 'and now tarfile exists');
+}
+
+done_testing;
