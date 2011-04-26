@@ -17,6 +17,6 @@ my $rel = CXGN::ITAG::Release->new( releasenum => $num, dir => $dir );
 my $stats = CXGN::ITAG::Release::Statistics->new( release => $rel );
 
 cmp_ok( $stats->gene_model_length->count, '>', 0, 'got some genes in the stats' );
-
+cmp_ok( $stats->protein_coding_with_supporting_cdna, '>', 0, 'got some gene models with cdna support' );
 
 done_testing;
