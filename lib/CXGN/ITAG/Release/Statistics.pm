@@ -17,6 +17,7 @@ use MooseX::Types::Path::Class qw/ File Dir /;
 
 use Bio::GFF3::LowLevel 'gff3_parse_feature';
 
+use List::MoreUtils 'uniq';
 use Hash::Util qw/ lock_hash /;
 
 use Statistics::Descriptive;
@@ -282,7 +283,7 @@ sub _analyze_genomic_gff3 { # process the genomic gff3
                 if ( $line =~ /Note=/ ) {
                     $self->inc_gene_models_with_human_desc;
                 }
-                if ( my @go_terms = $line =~ /Ontology_term=([^;\n]+)/g ) {
+                if ( my @go_terms = uniq( map { split /,/, $_ } $line =~ /(?:Ontology_term|interpro2go_term|sifter_term)=([^;\n]+)/g )) {
                     $self->inc_gene_models_with_GO_terms;
                     $self->add_GO_terms_per_mrna( scalar @go_terms );
                     $go_terms_seen{$_} = 1 for @go_terms;
