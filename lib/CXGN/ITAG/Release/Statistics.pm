@@ -267,7 +267,9 @@ sub _analyze_genomic_gff3 { # process the genomic gff3
                 ### length: $gene_length
                 if ( my $p = $previous_gene_end->{$strand} ) {
                     if( $p->[0] eq $ref ) {
-                        $self->add_intergenic_length( $start - $p->[1] + 1 );
+                        my $length = $start - $p->[1] + 1;
+                        $length = 0 if $length < 0;
+                        $self->add_intergenic_length( $length );
                     }
                 }
                 $previous_gene_end->{$strand} = [$ref,$end];
