@@ -143,13 +143,13 @@ EOT
         s                 => $self->statistics,
         bins              => {
             gene_model_length =>
-                $self->_bins_with_cutoff( $self->statistics->gene_model_length, 8, 40_000 ),
+                $self->_bins_with_cutoff( $self->statistics->gene_model_length, 5_000, 40_000 ),
             intron_length =>
-                $self->_bins_with_cutoff( $self->statistics->intron_length, 8, 20_000 ),
+                $self->_bins_with_cutoff( $self->statistics->intron_length, 2_000, 20_000 ),
             exon_length   =>
-                $self->_bins_with_cutoff( $self->statistics->exon_length, 8, 30_000 ),
+                $self->_bins_with_cutoff( $self->statistics->exon_length, 5_000, 30_000 ),
             intergenic_length   =>
-                $self->_bins_with_cutoff( $self->statistics->intergenic_length, 8, 500_000 ),
+                $self->_bins_with_cutoff( $self->statistics->intergenic_length, 20_000, 500_000 ),
 
         },
         release_tag       => $self->release->release_tag,
@@ -174,11 +174,11 @@ EOT
 
 }
 sub _bins_with_cutoff {
-    my ( $self, $stat, $bincount, $cutoff ) = @_;
+    my ( $self, $stat, $binsize, $cutoff ) = @_;
 
     $cutoff = $stat->max if $stat->max < $cutoff;
 
-    my $binsize = sprintf('%0.0f',($cutoff - $stat->min) / ($bincount-1));
+    my $bincount = sprintf('%0.0f',($cutoff - $stat->min) / $binsize )+1;
     my @bins = ( ( map { $cutoff - $binsize*$_ } reverse 0..($bincount-2) ), $stat->max );
     return \@bins;
 }

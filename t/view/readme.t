@@ -12,7 +12,7 @@ use_ok 'CXGN::ITAG::Release::View::README';
 
 {
     my $readme = CXGN::ITAG::Release::View::README->new( release => 'fake' );
-    my $bins = $readme->_bins_with_cutoff(scalar( qobj( min => 0, max => 400_000 )), 3, 20_000 );
+    my $bins = $readme->_bins_with_cutoff(scalar( qobj( min => 0, max => 400_000 )), 10_000, 20_000 );
     is_deeply( $bins, [10_000,20_000,400_000] ) or diag explain $bins;
 }
 
