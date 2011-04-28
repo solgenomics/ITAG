@@ -54,6 +54,7 @@ my $build = Module::Build->new(
     build_requires => {
         'Capture::Tiny'              => 0,
 	'File::Temp'                 => 0,
+        'Mock::Quick'                => 0,
         'Path::Class'                => 0,
 	'Test::More'                 => 0,
 	'Test::Most'                 => 0,
