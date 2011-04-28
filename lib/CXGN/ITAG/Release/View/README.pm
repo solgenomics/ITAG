@@ -43,7 +43,7 @@ sub render {
      Median  [% stat.median | comma %]
      Frequency Distribution:
             Bin  Frequency
-     [% f=stat.frequency_distribution_ref(bins || 8);
+     [% f=stat.frequency_distribution_ref( bins.0.defined ? bins : 8 );
         FOREACH bin IN f.keys.nsort -%]
 [% bin | format('%0.0f') | comma | format('%10s') %]  [% f.$bin | comma | format('%-10s') %]
      [% END -%]
@@ -101,11 +101,11 @@ Announcements of new releases, updates of data, tools, and other developments fr
   Exon count:       [% s.exon_length.count | comma %]
   Intron count:     [% s.intron_length.count | comma %]
 
-[% INCLUDE stat_full stat=s.gene_model_length    label='Gene model length (bp)'   %]
-[% INCLUDE stat_full stat=s.intergenic_length    label='Intergenic distance (bp)' %]
-[% INCLUDE stat_full stat=s.exons_per_gene_model label='Exons per gene model'     %]
-[% INCLUDE stat_full stat=s.exon_length          label='Exon length (bp)'         %]
-[% INCLUDE stat_full stat=s.intron_length        label='Intron length (bp)'       %]
+[% INCLUDE stat_full stat=s.gene_model_length    label='Gene model length (bp)'   bins=bins.gene_model_length    %]
+[% INCLUDE stat_full stat=s.intergenic_length    label='Intergenic distance (bp)' bins=bins.intergenic_length    %]
+[% INCLUDE stat_full stat=s.exons_per_gene_model label='Exons per gene model'     bins=bins.exons_per_gene_model %]
+[% INCLUDE stat_full stat=s.exon_length          label='Exon length (bp)'         bins=bins.exon_length          %]
+[% INCLUDE stat_full stat=s.intron_length        label='Intron length (bp)'       bins=bins.intron_length        %]
 
 4.3 Functional Annotation
 
@@ -141,6 +141,17 @@ EOT
       \$readme_template,
       {
         s                 => $self->statistics,
+        bins              => {
+            gene_model_length =>
+                $self->_bins_with_cutoff( $self->statistics->gene_model_length, 8, 40_000 ),
+            intron_length =>
+                $self->_bins_with_cutoff( $self->statistics->intron_length, 8, 20_000 ),
+            exon_length   =>
+                $self->_bins_with_cutoff( $self->statistics->exon_length, 8, 30_000 ),
+            intergenic_length   =>
+                $self->_bins_with_cutoff( $self->statistics->intergenic_length, 8, 500_000 ),
+
+        },
         release_tag       => $self->release->release_tag,
         release_num       => $self->release->release_number,
         date_str          => POSIX::strftime( "%B %e, %Y", gmtime() ),
@@ -161,6 +172,15 @@ EOT
 
   return $readme_text;
 
+}
+sub _bins_with_cutoff {
+    my ( $self, $stat, $bincount, $cutoff ) = @_;
+
+    $cutoff = $stat->max if $stat->max < $cutoff;
+
+    my $binsize = ($cutoff - $stat->min) / ($bincount-1);
+    my @bins = ( ( map { $cutoff - $binsize*$_ } reverse 0..($bincount-2) ), $stat->max );
+    return \@bins;
 }
 
 #generate a block of text describing each file in the release
