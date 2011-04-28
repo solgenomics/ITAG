@@ -178,7 +178,7 @@ sub _bins_with_cutoff {
 
     $cutoff = $stat->max if $stat->max < $cutoff;
 
-    my $binsize = ($cutoff - $stat->min) / ($bincount-1);
+    my $binsize = sprintf('%0.0f',($cutoff - $stat->min) / ($bincount-1));
     my @bins = ( ( map { $cutoff - $binsize*$_ } reverse 0..($bincount-2) ), $stat->max );
     return \@bins;
 }
