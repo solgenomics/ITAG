@@ -256,7 +256,11 @@ sub _analyze_genomic_gff3 { # process the genomic gff3
                 my $parent = $f->{attributes}{Parent}[0];
                 if ( my $p = $previous_exon_end->{ $parent } ) {
                     my $intron_length = $start - $p + 1;
-                    $self->add_intron_length( $intron_length );
+                    if( $intron_length > 20_000) {
+                        warn "anomalous intron length $intron_length:\n$line\n(previous exon end $p). Skipping.\n";
+                    } else {
+                        $self->add_intron_length( $intron_length );
+                    }
                 }
                 $previous_exon_end->{$parent} = $end;
 
