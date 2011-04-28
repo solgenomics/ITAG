@@ -253,12 +253,13 @@ sub _analyze_genomic_gff3 { # process the genomic gff3
         if ( $src eq 'itag_renaming' || $src eq 'itag_eugene' ) {
             if ( $type eq 'exon' ) {
                 $self->add_exon_length( $length );
-                if ( my $p = $previous_exon_end->{$strand} ) {
-                    $self->add_intron_length( $start - $p + 1 );
+                my $parent = $f->{attributes}{Parent}[0];
+                if ( my $p = $previous_exon_end->{ $parent } ) {
+                    my $intron_length = $start - $p + 1;
+                    $self->add_intron_length( $intron_length );
                 }
-                $previous_exon_end->{$strand} = $end;
+                $previous_exon_end->{$parent} = $end;
 
-                my ($parent) = $line =~ /Parent=mRNA:([^;\n]+)/ or die "cannot parse parent from gff3 line:\n$line\n";
                 ### parent: $parent
                 $mrna_exon_counts{$parent}++;
 
@@ -272,7 +273,7 @@ sub _analyze_genomic_gff3 { # process the genomic gff3
                 $previous_gene_end->{$strand} = [$ref,$end];
             } elsif ( $type eq 'mRNA' ) {
                 $self->add_gene_model_length( $length );
-                $previous_exon_end->{$strand} = undef; #< new mrna on this strand
+                $previous_exon_end->{ $f->{attributes}{ID}[0] } = undef; #< new mrna on this strand
                 $self->inc_gene_models;
                 my ($parent) = $line =~ /Parent=gene:([^;\n]+)/ or die "cannot parse parent from gff3 line:\n$line\n";
                 ### parent: $parent
