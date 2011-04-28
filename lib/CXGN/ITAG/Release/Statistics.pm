@@ -174,9 +174,6 @@ has 'protein_fasta' => (
 #go through all the files in the release, collect statistics about them
 sub BUILD {
   my ( $self ) = @_;
-
-  print "collecting statistics...\n";
-
   $self->_analyze_genomic_gff3;
   $self->_analyze_protein_fasta;
 }
