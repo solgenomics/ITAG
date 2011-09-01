@@ -21,7 +21,7 @@ my $build = Module::Build->new(
         'List::MoreUtils'            => 0,
         'Memoize'                    => 0,
 
-        'Bio::GFF3::LowLevel'        => '0.4',
+        'Bio::GFF3'                  => '0.4',
         # right now, we have to depend on whole bioperl, like this
         'Bio::Root::Version'         => '1.005002102',
         'Class::Accessor'            => 0,
