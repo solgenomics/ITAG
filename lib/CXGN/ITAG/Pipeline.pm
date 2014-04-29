@@ -224,7 +224,7 @@ sub username { 'itagpipeline' }
 
 =cut
 
-__PACKAGE__->mk_accessors qw( basedir version );
+__PACKAGE__->mk_accessors(qw( basedir version ));
 
 
 
