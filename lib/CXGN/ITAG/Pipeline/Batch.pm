@@ -16,7 +16,7 @@ use Carp;
 use File::Spec;
 use Memoize;
 
-use UNIVERSAL qw/isa/;
+#use UNIVERSAL qw/isa/;
 
 use CXGN::Tools::Identifiers qw/identifier_namespace/;
 use CXGN::TomatoGenome::ChromosomeAssemblies qw/named_contigs/;
